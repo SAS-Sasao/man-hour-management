@@ -25,6 +25,7 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
   const [entries, setEntries] = useState<TimeEntryForm[]>([
     { projectId: '', phaseId: '', taskId: '', hours: '', description: '' }
   ]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (editingEntry) {
@@ -90,6 +91,8 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
       alert('少なくとも1つの有効な工数入力が必要です');
       return;
     }
+
+    setIsLoading(true);
 
     try {
       if (editingEntry && validEntries.length === 1) {
@@ -167,147 +170,163 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
     } catch (error) {
       console.error('工数入力エラー:', error);
       alert('工数の保存に失敗しました');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <div className="glass-heavy rounded-3xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden animate-scaleIn">
         {/* ヘッダー */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold">
-                {editingEntry ? '工数編集' : '工数入力'}
-              </h2>
-              <p className="text-blue-100 mt-1">
-                {selectedDate.toLocaleDateString('ja-JP', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric',
-                  weekday: 'long'
-                })}
-              </p>
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-600 via-teal-600 to-blue-600 opacity-90"></div>
+          <div className="relative p-8 text-white">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center">
+                  <span className="text-3xl">{editingEntry ? '✏️' : '⏰'}</span>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold">
+                    {editingEntry ? '工数編集' : '工数入力'}
+                  </h2>
+                  <p className="text-green-100 mt-1 text-lg">
+                    {selectedDate.toLocaleDateString('ja-JP', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      weekday: 'long'
+                    })}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-12 h-12 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-xl flex items-center justify-center transition-all duration-200 hover-lift"
+              >
+                <span className="text-2xl">✕</span>
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors duration-200"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
         </div>
 
         {/* コンテンツ */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          <div className="space-y-6">
+        <div className="p-8 overflow-y-auto max-h-[calc(95vh-280px)]">
+          <div className="space-y-8">
             {entries.map((entry, index) => (
-              <div key={index} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    工数入力 {index + 1}
-                  </h3>
-                  {entries.length > 1 && (
-                    <button
-                      onClick={() => removeEntry(index)}
-                      className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 transition-colors duration-200"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      プロジェクト *
-                    </label>
-                    <select
-                      value={entry.projectId}
-                      onChange={(e) => updateEntry(index, 'projectId', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                    >
-                      <option value="">選択してください</option>
-                      {state.projects.filter(p => p.status === 'ACTIVE').map(project => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
+              <div key={index} className="card hover-lift animate-fadeIn" style={{animationDelay: `${index * 0.1}s`}}>
+                <div className="card-body">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold gradient-text-success flex items-center space-x-3">
+                      <span className="text-2xl">📝</span>
+                      <span>工数入力 {index + 1}</span>
+                    </h3>
+                    {entries.length > 1 && (
+                      <button
+                        onClick={() => removeEntry(index)}
+                        className="w-10 h-10 bg-red-100 hover:bg-red-200 rounded-xl flex items-center justify-center transition-colors duration-200 hover-lift"
+                        title="削除"
+                      >
+                        <span className="text-lg">🗑️</span>
+                      </button>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      工程 *
-                    </label>
-                    <select
-                      value={entry.phaseId}
-                      onChange={(e) => updateEntry(index, 'phaseId', e.target.value)}
-                      disabled={!entry.projectId}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 transition-colors duration-200"
-                    >
-                      <option value="">選択してください</option>
-                      {getAvailablePhases(entry.projectId).map(phase => (
-                        <option key={phase.id} value={phase.id}>
-                          {phase.name}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div className="space-y-2">
+                      <label className="form-label flex items-center space-x-2">
+                        <span className="text-lg">📋</span>
+                        <span>プロジェクト *</span>
+                      </label>
+                      <select
+                        value={entry.projectId}
+                        onChange={(e) => updateEntry(index, 'projectId', e.target.value)}
+                        className="form-select"
+                      >
+                        <option value="">選択してください</option>
+                        {state.projects.filter(p => p.status === 'ACTIVE').map(project => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="form-label flex items-center space-x-2">
+                        <span className="text-lg">🔧</span>
+                        <span>工程 *</span>
+                      </label>
+                      <select
+                        value={entry.phaseId}
+                        onChange={(e) => updateEntry(index, 'phaseId', e.target.value)}
+                        disabled={!entry.projectId}
+                        className="form-select disabled:opacity-50"
+                      >
+                        <option value="">選択してください</option>
+                        {getAvailablePhases(entry.projectId).map(phase => (
+                          <option key={phase.id} value={phase.id}>
+                            {phase.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="form-label flex items-center space-x-2">
+                        <span className="text-lg">📋</span>
+                        <span>作業 *</span>
+                      </label>
+                      <select
+                        value={entry.taskId}
+                        onChange={(e) => updateEntry(index, 'taskId', e.target.value)}
+                        disabled={!entry.phaseId}
+                        className="form-select disabled:opacity-50"
+                      >
+                        <option value="">選択してください</option>
+                        {getAvailableTasks(entry.phaseId).map(task => (
+                          <option key={task.id} value={task.id}>
+                            {task.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      作業 *
-                    </label>
-                    <select
-                      value={entry.taskId}
-                      onChange={(e) => updateEntry(index, 'taskId', e.target.value)}
-                      disabled={!entry.phaseId}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 transition-colors duration-200"
-                    >
-                      <option value="">選択してください</option>
-                      {getAvailableTasks(entry.phaseId).map(task => (
-                        <option key={task.id} value={task.id}>
-                          {task.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                      <label className="form-label flex items-center space-x-2">
+                        <span className="text-lg">⏰</span>
+                        <span>作業時間（時間） *</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={entry.hours}
+                        onChange={(e) => updateEntry(index, 'hours', e.target.value)}
+                        step="0.25"
+                        min="0.25"
+                        max="24"
+                        className="form-input"
+                        placeholder="8.0"
+                      />
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      作業時間（時間） *
-                    </label>
-                    <input
-                      type="number"
-                      value={entry.hours}
-                      onChange={(e) => updateEntry(index, 'hours', e.target.value)}
-                      step="0.25"
-                      min="0.25"
-                      max="24"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                    />
-                  </div>
-
-                  <div className="md:col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      作業内容
-                    </label>
-                    <input
-                      type="text"
-                      value={entry.description}
-                      onChange={(e) => updateEntry(index, 'description', e.target.value)}
-                      placeholder="作業の詳細を入力してください"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                    />
+                    <div className="lg:col-span-3 space-y-2">
+                      <label className="form-label flex items-center space-x-2">
+                        <span className="text-lg">💬</span>
+                        <span>作業内容</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={entry.description}
+                        onChange={(e) => updateEntry(index, 'description', e.target.value)}
+                        placeholder="作業の詳細を入力してください"
+                        className="form-input"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -316,30 +335,44 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
             {!editingEntry && (
               <button
                 onClick={addNewEntry}
-                className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-all duration-200 flex items-center justify-center space-x-2"
+                className="w-full card border-2 border-dashed border-gray-300 hover:border-green-500 transition-all duration-200 hover-lift"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span>工数入力を追加</span>
+                <div className="card-body text-center py-8">
+                  <div className="text-gray-400 hover:text-green-500 transition-colors duration-200">
+                    <div className="text-4xl mb-3">➕</div>
+                    <span className="text-lg font-medium">工数入力を追加</span>
+                  </div>
+                </div>
               </button>
             )}
           </div>
         </div>
 
         {/* フッター */}
-        <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200">
+        <div className="glass border-t border-gray-200 px-8 py-6 flex justify-end space-x-4">
           <button
             onClick={onClose}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+            disabled={isLoading}
+            className="px-8 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors duration-200 font-medium disabled:opacity-50"
           >
             キャンセル
           </button>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg"
+            disabled={isLoading}
+            className="btn-success px-8 py-3 text-lg font-semibold hover-lift disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
-            {editingEntry ? '更新' : '登録'}
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="spinner w-5 h-5 border-2 border-white border-l-transparent"></div>
+                <span>{editingEntry ? '更新中...' : '登録中...'}</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">{editingEntry ? '💾' : '✨'}</span>
+                <span>{editingEntry ? '更新する' : '登録する'}</span>
+              </div>
+            )}
           </button>
         </div>
       </div>
