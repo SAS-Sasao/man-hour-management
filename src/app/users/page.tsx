@@ -13,7 +13,7 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'member' as User['role'],
+    role: 'MEMBER' as User['role'],
     password: ''
   });
 
@@ -21,7 +21,7 @@ export default function UsersPage() {
     setFormData({
       name: '',
       email: '',
-      role: 'member',
+      role: 'MEMBER',
       password: ''
     });
     setEditingUser(null);
@@ -106,12 +106,14 @@ export default function UsersPage() {
     }
   };
 
-  const addPredefinedUser = () => {
+  const addPredefinedUser = async () => {
+    const hashedPassword = await bcrypt.hash('ts05140952', 10);
     const predefinedUser: User = {
       id: `user-${Date.now()}`,
       name: '笹尾 豊樹',
       email: 'sasao@sas-com.com',
-      role: 'admin',
+      password: hashedPassword,
+      role: 'ADMIN',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -124,7 +126,7 @@ export default function UsersPage() {
     dispatch({ type: 'ADD_USER', payload: predefinedUser });
   };
 
-  if (state.currentUser?.role !== 'admin') {
+  if (state.currentUser?.role !== 'ADMIN') {
     return (
       <Layout>
         <div className="text-center py-12">
@@ -207,9 +209,9 @@ export default function UsersPage() {
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
-                    <option value="member">メンバー</option>
-                    <option value="manager">マネージャー</option>
-                    <option value="admin">管理者</option>
+                    <option value="MEMBER">メンバー</option>
+                    <option value="MANAGER">マネージャー</option>
+                    <option value="ADMIN">管理者</option>
                   </select>
                 </div>
 
@@ -275,12 +277,12 @@ export default function UsersPage() {
                               <p className="text-sm text-gray-500">{user.email}</p>
                             </div>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              user.role === 'admin' ? 'bg-red-100 text-red-800' :
-                              user.role === 'manager' ? 'bg-yellow-100 text-yellow-800' :
+                              user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
+                              user.role === 'MANAGER' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
-                              {user.role === 'admin' ? '管理者' :
-                               user.role === 'manager' ? 'マネージャー' : 'メンバー'}
+                              {user.role === 'ADMIN' ? '管理者' :
+                               user.role === 'MANAGER' ? 'マネージャー' : 'メンバー'}
                             </span>
                           </div>
                           {user.id !== state.currentUser?.id && (

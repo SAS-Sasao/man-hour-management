@@ -17,7 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: 'プロジェクト', href: '/projects', icon: '📋' },
     { name: '工数入力', href: '/time-entry', icon: '⏰' },
     { name: 'レポート', href: '/reports', icon: '📈' },
-    ...(state.currentUser?.role === 'admin' ? [
+    ...(state.currentUser?.role === 'ADMIN' ? [
       { name: 'ユーザー管理', href: '/users', icon: '👥' }
     ] : []),
   ];
@@ -93,8 +93,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="hidden md:block">
                   <div className="text-sm font-medium text-gray-900">{state.currentUser.name}</div>
                   <div className="text-xs text-gray-500">
-                    {state.currentUser.role === 'admin' ? '管理者' :
-                     state.currentUser.role === 'manager' ? 'マネージャー' : 'メンバー'}
+                    {state.currentUser.role === 'ADMIN' ? '管理者' :
+                     state.currentUser.role === 'MANAGER' ? 'マネージャー' : 'メンバー'}
                   </div>
                 </div>
               </div>

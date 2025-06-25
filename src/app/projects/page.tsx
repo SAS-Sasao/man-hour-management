@@ -15,7 +15,7 @@ export default function ProjectsPage() {
     description: '',
     startDate: '',
     endDate: '',
-    status: 'active' as Project['status'],
+    status: 'ACTIVE' as Project['status'],
     managerId: ''
   });
 
@@ -25,43 +25,83 @@ export default function ProjectsPage() {
       description: '',
       startDate: '',
       endDate: '',
-      status: 'active',
+      status: 'ACTIVE',
       managerId: ''
     });
     setEditingProject(null);
     setShowCreateForm(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const projectData = {
       name: formData.name,
       description: formData.description,
-      startDate: new Date(formData.startDate),
-      endDate: formData.endDate ? new Date(formData.endDate) : undefined,
+      startDate: formData.startDate,
+      endDate: formData.endDate || null,
       status: formData.status,
       managerId: formData.managerId || state.currentUser?.id || ''
     };
 
-    if (editingProject) {
-      const updatedProject: Project = {
-        ...editingProject,
-        ...projectData,
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
-    } else {
-      const newProject: Project = {
-        id: `project-${Date.now()}`,
-        ...projectData,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'ADD_PROJECT', payload: newProject });
-    }
+    try {
+      if (editingProject) {
+        // プロジェクト更新（APIエンドポイントが必要）
+        const response = await fetch(`/api/projects/${editingProject.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(projectData),
+        });
 
-    resetForm();
+        if (response.ok) {
+          const updatedProject = await response.json();
+          const project: Project = {
+            ...updatedProject,
+            startDate: new Date(updatedProject.startDate),
+            endDate: updatedProject.endDate ? new Date(updatedProject.endDate) : undefined,
+            createdAt: new Date(updatedProject.createdAt),
+            updatedAt: new Date(updatedProject.updatedAt),
+          };
+          dispatch({ type: 'UPDATE_PROJECT', payload: project });
+        } else {
+          const errorData = await response.json();
+          alert(`プロジェクトの更新に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
+      } else {
+        // プロジェクト新規作成
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(projectData),
+        });
+
+        if (response.ok) {
+          const newProject = await response.json();
+          const project: Project = {
+            ...newProject,
+            startDate: new Date(newProject.startDate),
+            endDate: newProject.endDate ? new Date(newProject.endDate) : undefined,
+            createdAt: new Date(newProject.createdAt),
+            updatedAt: new Date(newProject.updatedAt),
+          };
+          dispatch({ type: 'ADD_PROJECT', payload: project });
+        } else {
+          const errorData = await response.json();
+          alert(`プロジェクトの作成に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
+      }
+
+      resetForm();
+    } catch (error) {
+      console.error('プロジェクト保存エラー:', error);
+      alert('プロジェクトの保存に失敗しました');
+    }
   };
 
   const handleEdit = (project: Project) => {
@@ -98,7 +138,7 @@ export default function ProjectsPage() {
     }
   };
 
-  const managers = state.users.filter(user => user.role === 'admin' || user.role === 'manager');
+  const managers = state.users.filter(user => user.role === 'ADMIN' || user.role === 'MANAGER');
 
   return (
     <Layout>
@@ -195,9 +235,9 @@ export default function ProjectsPage() {
                     onChange={(e) => setFormData({...formData, status: e.target.value as Project['status']})}
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="active">進行中</option>
-                    <option value="on-hold">保留</option>
-                    <option value="completed">完了</option>
+                    <option value="ACTIVE">進行中</option>
+                    <option value="ON_HOLD">保留</option>
+                    <option value="COMPLETED">完了</option>
                   </select>
                 </div>
               </div>
@@ -252,12 +292,12 @@ export default function ProjectsPage() {
                         <div className="flex items-center space-x-3">
                           <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            project.status === 'active' ? 'bg-green-100 text-green-800' :
-                            project.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                            project.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
                             'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {project.status === 'active' ? '進行中' :
-                             project.status === 'completed' ? '完了' : '保留'}
+                            {project.status === 'ACTIVE' ? '進行中' :
+                             project.status === 'COMPLETED' ? '完了' : '保留'}
                           </span>
                         </div>
                         <div className="flex space-x-2">

@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'manager' | 'member';
+  role: 'ADMIN' | 'MANAGER' | 'MEMBER';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,7 +14,7 @@ export interface Project {
   description: string;
   startDate: Date;
   endDate?: Date;
-  status: 'active' | 'completed' | 'on-hold';
+  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
   managerId: string;
   createdAt: Date;
   updatedAt: Date;

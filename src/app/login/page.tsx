@@ -46,6 +46,9 @@ export default function LoginPage() {
       
       // ローカルストレージをクリアしてから新しいユーザーを設定
       localStorage.clear();
+      
+      // データベースから取得したユーザー情報をそのまま使用
+      console.log('ログイン成功 - ユーザー情報:', userWithDates);
       dispatch({ type: 'SET_USERS', payload: [userWithDates] });
       dispatch({ type: 'SET_CURRENT_USER', payload: userWithDates });
       

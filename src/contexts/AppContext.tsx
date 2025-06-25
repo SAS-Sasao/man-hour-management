@@ -146,104 +146,83 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const savedUsers = localStorage.getItem('manhour-users');
-        if (savedUsers) {
-          const users = await Promise.all(
-            JSON.parse(savedUsers).map(async (user: any) => {
-              // 既存ユーザーにパスワードフィールドがない場合、デフォルトパスワードを設定
-              let password = user.password;
-              if (!password) {
-                password = await bcrypt.hash('demo123', 10);
-              }
-              
-              return {
-                ...user,
-                password,
-                createdAt: new Date(user.createdAt),
-                updatedAt: new Date(user.updatedAt),
-              };
-            })
-          );
-          dispatch({ type: 'SET_USERS', payload: users });
-        } else {
-          // 笹尾 豊樹のアカウントを作成
-          const createSasaoUser = async () => {
-            const sasaoPassword = await bcrypt.hash('ts05140952', 10);
-            const sasaoUser: User = {
-              id: 'sasao-1',
-              name: '笹尾 豊樹',
-              email: 'sasao@sas-com.com',
-              password: sasaoPassword,
-              role: 'admin',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            };
-            dispatch({ type: 'SET_USERS', payload: [sasaoUser] });
-          };
-          createSasaoUser();
+        // 初期データを作成
+        try {
+          await fetch('/api/admin/init-data', { method: 'POST' });
+        } catch (initError) {
+          console.log('初期データ作成をスキップ:', initError);
         }
 
-        const savedProjects = localStorage.getItem('manhour-projects');
-        if (savedProjects) {
-          const projects = JSON.parse(savedProjects).map((project: any) => ({
+        // APIからユーザーデータを取得
+        const usersResponse = await fetch('/api/users');
+        if (usersResponse.ok) {
+          const users = await usersResponse.json();
+          const usersWithPassword = users.map((user: any) => ({
+            ...user,
+            password: '', // セキュリティのため、パスワードは空にする
+            createdAt: new Date(user.createdAt),
+            updatedAt: new Date(user.updatedAt),
+          }));
+          dispatch({ type: 'SET_USERS', payload: usersWithPassword });
+        }
+
+        // APIからプロジェクトデータを取得
+        const projectsResponse = await fetch('/api/projects');
+        if (projectsResponse.ok) {
+          const projects = await projectsResponse.json();
+          const projectsWithDates = projects.map((project: any) => ({
             ...project,
             startDate: new Date(project.startDate),
             endDate: project.endDate ? new Date(project.endDate) : undefined,
             createdAt: new Date(project.createdAt),
             updatedAt: new Date(project.updatedAt),
           }));
-          dispatch({ type: 'SET_PROJECTS', payload: projects });
-        } else {
-          // デフォルトプロジェクトを作成
-          const defaultProject: Project = {
-            id: 'project-1',
-            name: 'サンプルプロジェクト',
-            description: '工数管理システムのデモ用プロジェクトです',
-            startDate: new Date(),
-            status: 'active',
-            managerId: 'sasao-1',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-          dispatch({ type: 'SET_PROJECTS', payload: [defaultProject] });
+          dispatch({ type: 'SET_PROJECTS', payload: projectsWithDates });
+
+          // プロジェクトから工程とタスクを抽出
+          const allPhases: Phase[] = [];
+          const allTasks: Task[] = [];
           
-          // デフォルトの工程とタスクを作成
-          const { phases, tasks } = createDefaultPhasesAndTasks('project-1');
-          dispatch({ type: 'SET_PHASES', payload: phases });
-          dispatch({ type: 'SET_TASKS', payload: tasks });
+          projects.forEach((project: any) => {
+            if (project.phases) {
+              project.phases.forEach((phase: any) => {
+                allPhases.push({
+                  ...phase,
+                  createdAt: new Date(phase.createdAt),
+                  updatedAt: new Date(phase.updatedAt),
+                });
+                
+                if (phase.tasks) {
+                  phase.tasks.forEach((task: any) => {
+                    allTasks.push({
+                      ...task,
+                      createdAt: new Date(task.createdAt),
+                      updatedAt: new Date(task.updatedAt),
+                    });
+                  });
+                }
+              });
+            }
+          });
+          
+          dispatch({ type: 'SET_PHASES', payload: allPhases });
+          dispatch({ type: 'SET_TASKS', payload: allTasks });
         }
 
-        const savedPhases = localStorage.getItem('manhour-phases');
-        if (savedPhases) {
-          const phases = JSON.parse(savedPhases).map((phase: any) => ({
-            ...phase,
-            createdAt: new Date(phase.createdAt),
-            updatedAt: new Date(phase.updatedAt),
-          }));
-          dispatch({ type: 'SET_PHASES', payload: phases });
-        }
-
-        const savedTasks = localStorage.getItem('manhour-tasks');
-        if (savedTasks) {
-          const tasks = JSON.parse(savedTasks).map((task: any) => ({
-            ...task,
-            createdAt: new Date(task.createdAt),
-            updatedAt: new Date(task.updatedAt),
-          }));
-          dispatch({ type: 'SET_TASKS', payload: tasks });
-        }
-
-        const savedTimeEntries = localStorage.getItem('manhour-timeentries');
-        if (savedTimeEntries) {
-          const timeEntries = JSON.parse(savedTimeEntries).map((entry: any) => ({
+        // APIから時間入力データを取得
+        const timeEntriesResponse = await fetch('/api/time-entries');
+        if (timeEntriesResponse.ok) {
+          const timeEntries = await timeEntriesResponse.json();
+          const timeEntriesWithDates = timeEntries.map((entry: any) => ({
             ...entry,
             date: new Date(entry.date),
             createdAt: new Date(entry.createdAt),
             updatedAt: new Date(entry.updatedAt),
           }));
-          dispatch({ type: 'SET_TIME_ENTRIES', payload: timeEntries });
+          dispatch({ type: 'SET_TIME_ENTRIES', payload: timeEntriesWithDates });
         }
 
+        // ローカルストレージから現在のユーザー情報を取得（ログイン状態の保持）
         const savedCurrentUser = localStorage.getItem('manhour-current-user');
         if (savedCurrentUser) {
           const currentUser = JSON.parse(savedCurrentUser);
@@ -254,32 +233,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }});
         }
       } catch (error) {
-        console.error('Failed to load data from localStorage:', error);
+        console.error('Failed to load data from API:', error);
       }
     };
 
     loadData();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('manhour-users', JSON.stringify(state.users));
-  }, [state.users]);
-
-  useEffect(() => {
-    localStorage.setItem('manhour-projects', JSON.stringify(state.projects));
-  }, [state.projects]);
-
-  useEffect(() => {
-    localStorage.setItem('manhour-phases', JSON.stringify(state.phases));
-  }, [state.phases]);
-
-  useEffect(() => {
-    localStorage.setItem('manhour-tasks', JSON.stringify(state.tasks));
-  }, [state.tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('manhour-timeentries', JSON.stringify(state.timeEntries));
-  }, [state.timeEntries]);
+  // localStorageへの保存は削除（データベースを使用するため）
 
   useEffect(() => {
     if (state.currentUser) {

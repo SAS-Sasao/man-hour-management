@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   const stats = {
     totalProjects: state.projects.length,
-    activeProjects: state.projects.filter(p => p.status === 'active').length,
+    activeProjects: state.projects.filter(p => p.status === 'ACTIVE').length,
     totalUsers: state.users.length,
     thisMonthHours: userTimeEntries
       .filter(entry => {
@@ -226,12 +226,12 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        project.status === 'active' ? 'bg-green-100 text-green-800' :
-                        project.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                        project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                        project.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {project.status === 'active' ? '進行中' :
-                         project.status === 'completed' ? '完了' : '保留'}
+                        {project.status === 'ACTIVE' ? '進行中' :
+                         project.status === 'COMPLETED' ? '完了' : '保留'}
                       </span>
                     </div>
                     {project.endDate && (
@@ -307,12 +307,12 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        project.status === 'active' ? 'bg-green-100 text-green-800 border border-green-200' :
-                        project.status === 'completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                        project.status === 'ACTIVE' ? 'bg-green-100 text-green-800 border border-green-200' :
+                        project.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                         'bg-yellow-100 text-yellow-800 border border-yellow-200'
                       }`}>
-                        {project.status === 'active' ? '🚀 進行中' :
-                         project.status === 'completed' ? '✅ 完了' : '⏸️ 保留'}
+                        {project.status === 'ACTIVE' ? '🚀 進行中' :
+                         project.status === 'COMPLETED' ? '✅ 完了' : '⏸️ 保留'}
                       </span>
                     </div>
                   </div>

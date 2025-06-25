@@ -74,7 +74,7 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
     return state.tasks.filter(task => task.phaseId === phaseId);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 日付バリデーション
     const dateValidation = validateDateInput(selectedDate.toISOString().split('T')[0]);
     if (!dateValidation.isValid) {
@@ -91,39 +91,83 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
       return;
     }
 
-    if (editingEntry && validEntries.length === 1) {
-      // 編集モード
-      const entry = validEntries[0];
-      const updatedEntry: TimeEntry = {
-        ...editingEntry,
-        projectId: entry.projectId,
-        phaseId: entry.phaseId,
-        taskId: entry.taskId,
-        hours: parseFloat(entry.hours),
-        description: entry.description,
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'UPDATE_TIME_ENTRY', payload: updatedEntry });
-    } else {
-      // 新規作成モード
-      validEntries.forEach(entry => {
-        const newEntry: TimeEntry = {
-          id: `timeentry-${Date.now()}-${Math.random()}`,
-          userId: state.currentUser?.id || '',
-          projectId: entry.projectId,
-          phaseId: entry.phaseId,
-          taskId: entry.taskId,
-          date: selectedDate,
-          hours: parseFloat(entry.hours),
-          description: entry.description,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        dispatch({ type: 'ADD_TIME_ENTRY', payload: newEntry });
-      });
-    }
+    try {
+      if (editingEntry && validEntries.length === 1) {
+        // 編集モード
+        const entry = validEntries[0];
+        const response = await fetch(`/api/time-entries/${editingEntry.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: state.currentUser?.id,
+            projectId: entry.projectId,
+            phaseId: entry.phaseId,
+            taskId: entry.taskId,
+            date: selectedDate.toISOString(),
+            hours: entry.hours,
+            description: entry.description,
+          }),
+        });
 
-    onClose();
+        if (response.ok) {
+          const updatedEntry = await response.json();
+          const timeEntry: TimeEntry = {
+            ...updatedEntry,
+            date: new Date(updatedEntry.date),
+            createdAt: new Date(updatedEntry.createdAt),
+            updatedAt: new Date(updatedEntry.updatedAt),
+          };
+          dispatch({ type: 'UPDATE_TIME_ENTRY', payload: timeEntry });
+        } else {
+          const errorData = await response.json();
+          console.error('更新エラー:', errorData);
+          alert(`工数の更新に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
+      } else {
+        // 新規作成モード
+        for (const entry of validEntries) {
+          const response = await fetch('/api/time-entries', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: state.currentUser?.id,
+              projectId: entry.projectId,
+              phaseId: entry.phaseId,
+              taskId: entry.taskId,
+              date: selectedDate.toISOString(),
+              hours: entry.hours,
+              description: entry.description,
+            }),
+          });
+
+          if (response.ok) {
+            const newEntry = await response.json();
+            const timeEntry: TimeEntry = {
+              ...newEntry,
+              date: new Date(newEntry.date),
+              createdAt: new Date(newEntry.createdAt),
+              updatedAt: new Date(newEntry.updatedAt),
+            };
+            dispatch({ type: 'ADD_TIME_ENTRY', payload: timeEntry });
+          } else {
+            const errorData = await response.json();
+            console.error('登録エラー:', errorData);
+            alert(`工数の登録に失敗しました: ${errorData.error || '不明なエラー'}`);
+            return;
+          }
+        }
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('工数入力エラー:', error);
+      alert('工数の保存に失敗しました');
+    }
   };
 
   if (!isOpen) return null;
@@ -190,7 +234,7 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                     >
                       <option value="">選択してください</option>
-                      {state.projects.filter(p => p.status === 'active').map(project => (
+                      {state.projects.filter(p => p.status === 'ACTIVE').map(project => (
                         <option key={project.id} value={project.id}>
                           {project.name}
                         </option>

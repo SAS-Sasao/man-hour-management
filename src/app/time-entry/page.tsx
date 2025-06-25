@@ -26,9 +26,22 @@ export default function TimeEntryPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (entryId: string) => {
+  const handleDelete = async (entryId: string) => {
     if (confirm('この工数入力を削除しますか？')) {
-      dispatch({ type: 'DELETE_TIME_ENTRY', payload: entryId });
+      try {
+        const response = await fetch(`/api/time-entries/${entryId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          dispatch({ type: 'DELETE_TIME_ENTRY', payload: entryId });
+        } else {
+          alert('削除に失敗しました');
+        }
+      } catch (error) {
+        console.error('削除エラー:', error);
+        alert('削除に失敗しました');
+      }
     }
   };
 

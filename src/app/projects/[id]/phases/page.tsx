@@ -1,17 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Layout from '../../../../components/Layout';
-import { useApp } from '../../../../contexts/AppContext';
-import { Phase, Task } from '../../../../types';
-import { createDefaultPhasesAndTasks } from '../../../../utils/defaultData';
+import { Phase, Task, Project } from '../../../../types';
+import { DEFAULT_PHASES, DEFAULT_TASKS } from '../../../../utils/defaultData';
 
 export default function ProjectPhasesPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
-  const { state, dispatch } = useApp();
+  
+  const [project, setProject] = useState<Project | null>(null);
+  const [phases, setPhases] = useState<Phase[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [showPhaseForm, setShowPhaseForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -30,26 +34,56 @@ export default function ProjectPhasesPage() {
     estimatedHours: ''
   });
 
-  const project = state.projects.find(p => p.id === projectId);
-  const phases = state.phases
-    .filter(p => p.projectId === projectId)
-    .sort((a, b) => a.order - b.order);
+  // データ取得
+  useEffect(() => {
+    fetchData();
+  }, [projectId]);
 
-  if (!project) {
-    return (
-      <Layout>
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">プロジェクトが見つかりません</h1>
-          <button
-            onClick={() => router.push('/projects')}
-            className="text-blue-600 hover:text-blue-800"
-          >
-            プロジェクト一覧に戻る
-          </button>
-        </div>
-      </Layout>
-    );
-  }
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // プロジェクト情報を取得
+      const projectResponse = await fetch('/api/projects');
+      if (!projectResponse.ok) {
+        throw new Error('プロジェクトの取得に失敗しました');
+      }
+      const projectsData = await projectResponse.json();
+      const currentProject = projectsData.find((p: Project) => p.id === projectId);
+      
+      if (!currentProject) {
+        throw new Error('プロジェクトが見つかりません');
+      }
+      setProject(currentProject);
+
+      // フェーズ情報を取得
+      const phasesResponse = await fetch('/api/phases');
+      if (!phasesResponse.ok) {
+        throw new Error('フェーズの取得に失敗しました');
+      }
+      const phasesData = await phasesResponse.json();
+      const projectPhases = phasesData
+        .filter((p: Phase) => p.projectId === projectId)
+        .sort((a: Phase, b: Phase) => a.order - b.order);
+      setPhases(projectPhases);
+
+      // タスク情報を取得
+      const tasksResponse = await fetch('/api/tasks');
+      if (!tasksResponse.ok) {
+        throw new Error('タスクの取得に失敗しました');
+      }
+      const tasksData = await tasksResponse.json();
+      const projectTasks = tasksData.filter((t: Task) => t.projectId === projectId);
+      setTasks(projectTasks);
+
+    } catch (err) {
+      console.error('データ取得エラー:', err);
+      setError(err instanceof Error ? err.message : '不明なエラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const resetPhaseForm = () => {
     setPhaseForm({ name: '', description: '' });
@@ -64,64 +98,122 @@ export default function ProjectPhasesPage() {
     setSelectedPhaseId('');
   };
 
-  const handlePhaseSubmit = (e: React.FormEvent) => {
+  const handlePhaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingPhase) {
-      const updatedPhase: Phase = {
-        ...editingPhase,
-        name: phaseForm.name,
-        description: phaseForm.description,
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'UPDATE_PHASE', payload: updatedPhase });
-    } else {
-      const newPhase: Phase = {
-        id: `phase-${Date.now()}`,
-        projectId,
-        name: phaseForm.name,
-        description: phaseForm.description,
-        order: phases.length + 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'ADD_PHASE', payload: newPhase });
-    }
+    try {
+      if (editingPhase) {
+        // TODO: フェーズ更新API（後で実装）
+        alert('フェーズ更新機能は未実装です');
+        return;
+      } else {
+        // フェーズ新規作成
+        const response = await fetch('/api/phases', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectId,
+            name: phaseForm.name,
+            description: phaseForm.description,
+          }),
+        });
 
-    resetPhaseForm();
+        if (response.ok) {
+          const newPhase = await response.json();
+          setPhases(prev => [...prev, {
+            ...newPhase,
+            createdAt: new Date(newPhase.createdAt),
+            updatedAt: new Date(newPhase.updatedAt),
+          }].sort((a, b) => a.order - b.order));
+        } else {
+          const errorData = await response.json();
+          alert(`フェーズの作成に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
+      }
+
+      resetPhaseForm();
+    } catch (error) {
+      console.error('フェーズ保存エラー:', error);
+      alert('フェーズの保存に失敗しました');
+    }
   };
 
-  const handleTaskSubmit = (e: React.FormEvent) => {
+  const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const estimatedHours = parseFloat(taskForm.estimatedHours) || 0;
-    const tasksInPhase = state.tasks.filter(t => t.phaseId === selectedPhaseId);
-    
-    if (editingTask) {
-      const updatedTask: Task = {
-        ...editingTask,
-        name: taskForm.name,
-        description: taskForm.description,
-        estimatedHours,
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
-    } else {
-      const newTask: Task = {
-        id: `task-${Date.now()}`,
-        phaseId: selectedPhaseId,
-        projectId,
-        name: taskForm.name,
-        description: taskForm.description,
-        estimatedHours,
-        order: tasksInPhase.length + 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      dispatch({ type: 'ADD_TASK', payload: newTask });
-    }
+    try {
+      const estimatedHours = parseFloat(taskForm.estimatedHours) || 0;
+      
+      if (editingTask) {
+        // タスク更新
+        const response = await fetch(`/api/tasks/${editingTask.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phaseId: selectedPhaseId,
+            projectId,
+            name: taskForm.name,
+            description: taskForm.description,
+            estimatedHours: estimatedHours,
+          }),
+        });
 
-    resetTaskForm();
+        if (response.ok) {
+          const updatedTask = await response.json();
+          setTasks(prev => prev.map(task => 
+            task.id === editingTask.id 
+              ? {
+                  ...updatedTask,
+                  createdAt: new Date(updatedTask.createdAt),
+                  updatedAt: new Date(updatedTask.updatedAt),
+                }
+              : task
+          ));
+        } else {
+          const errorData = await response.json();
+          alert(`タスクの更新に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
+      } else {
+        // タスク新規作成
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phaseId: selectedPhaseId,
+            projectId,
+            name: taskForm.name,
+            description: taskForm.description,
+            estimatedHours: estimatedHours,
+          }),
+        });
+
+        if (response.ok) {
+          const newTask = await response.json();
+          setTasks(prev => [...prev, {
+            ...newTask,
+            createdAt: new Date(newTask.createdAt),
+            updatedAt: new Date(newTask.updatedAt),
+          }]);
+        } else {
+          const errorData = await response.json();
+          alert(`タスクの作成に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
+      }
+
+      resetTaskForm();
+    } catch (error) {
+      console.error('タスク保存エラー:', error);
+      alert('タスクの保存に失敗しました');
+    }
   };
 
   const handleEditPhase = (phase: Phase) => {
@@ -144,59 +236,179 @@ export default function ProjectPhasesPage() {
     setShowTaskForm(true);
   };
 
-  const handleDeletePhase = (phaseId: string) => {
-    const tasksInPhase = state.tasks.filter(t => t.phaseId === phaseId);
-    const timeEntriesInPhase = state.timeEntries.filter(e => e.phaseId === phaseId);
+  const handleDeletePhase = async (phaseId: string) => {
+    const tasksInPhase = tasks.filter(t => t.phaseId === phaseId);
     
-    if (tasksInPhase.length > 0 || timeEntriesInPhase.length > 0) {
-      if (!confirm('この工程には作業や工数データが含まれています。削除しますか？')) {
+    if (tasksInPhase.length > 0) {
+      if (!confirm('この工程には作業が含まれています。削除しますか？')) {
         return;
       }
     }
     
-    dispatch({ type: 'DELETE_PHASE', payload: phaseId });
-    tasksInPhase.forEach(task => {
-      dispatch({ type: 'DELETE_TASK', payload: task.id });
-    });
-    timeEntriesInPhase.forEach(entry => {
-      dispatch({ type: 'DELETE_TIME_ENTRY', payload: entry.id });
-    });
+    try {
+      // TODO: フェーズ削除API（後で実装）
+      alert('フェーズ削除機能は未実装です');
+    } catch (error) {
+      console.error('フェーズ削除エラー:', error);
+      alert('フェーズの削除に失敗しました');
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    const timeEntriesInTask = state.timeEntries.filter(e => e.taskId === taskId);
-    
-    if (timeEntriesInTask.length > 0) {
-      if (!confirm('この作業には工数データが含まれています。削除しますか？')) {
-        return;
-      }
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('この作業を削除しますか？関連する時間入力データも削除されます。')) {
+      return;
     }
     
-    dispatch({ type: 'DELETE_TASK', payload: taskId });
-    timeEntriesInTask.forEach(entry => {
-      dispatch({ type: 'DELETE_TIME_ENTRY', payload: entry.id });
-    });
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // タスクリストから削除
+        setTasks(prev => prev.filter(task => task.id !== taskId));
+        alert('タスクが削除されました');
+      } else {
+        const errorData = await response.json();
+        alert(`タスクの削除に失敗しました: ${errorData.error || '不明なエラー'}`);
+      }
+    } catch (error) {
+      console.error('タスク削除エラー:', error);
+      alert('タスクの削除に失敗しました');
+    }
   };
 
-  const handleCreateDefaultStructure = () => {
+  const handleCreateDefaultStructure = async () => {
     if (phases.length > 0) {
       if (!confirm('既存の工程・作業があります。デフォルト構造を追加しますか？')) {
         return;
       }
     }
 
-    const { phases: defaultPhases, tasks: defaultTasks } = createDefaultPhasesAndTasks(projectId);
-    
-    defaultPhases.forEach(phase => {
-      dispatch({ type: 'ADD_PHASE', payload: phase });
-    });
-    
-    defaultTasks.forEach(task => {
-      dispatch({ type: 'ADD_TASK', payload: task });
-    });
+    try {
+      console.log('デフォルト構造作成開始...');
+      console.log('プロジェクトID:', projectId);
+      
+      // 各フェーズを順次作成
+      for (const phaseData of DEFAULT_PHASES) {
+        console.log(`フェーズ「${phaseData.name}」を作成中...`);
+        
+        // フェーズをAPIで作成
+        const phaseResponse = await fetch('/api/phases', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectId,
+            name: phaseData.name,
+            description: phaseData.description,
+          }),
+        });
 
-    alert('デフォルト工程・作業を追加しました！');
+        if (!phaseResponse.ok) {
+          const errorData = await phaseResponse.json();
+          console.error('フェーズ作成エラー詳細:', errorData);
+          throw new Error(`フェーズ「${phaseData.name}」の作成に失敗: ${errorData.error || 'Unknown error'}`);
+        }
+
+        const newPhase = await phaseResponse.json();
+        console.log('作成されたフェーズ:', newPhase);
+        
+        // フェーズリストを更新
+        setPhases(prev => [...prev, {
+          ...newPhase,
+          createdAt: new Date(newPhase.createdAt),
+          updatedAt: new Date(newPhase.updatedAt),
+        }].sort((a, b) => a.order - b.order));
+
+        // このフェーズにデフォルトタスクを作成
+        for (const taskData of DEFAULT_TASKS) {
+          console.log(`  タスク「${taskData.name}」を作成中...`);
+          
+          const taskResponse = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phaseId: newPhase.id, // 実際に作成されたフェーズのIDを使用
+              projectId,
+              name: taskData.name,
+              description: taskData.description,
+              estimatedHours: 0,
+            }),
+          });
+
+          if (!taskResponse.ok) {
+            const errorData = await taskResponse.json();
+            console.error(`タスク「${taskData.name}」の作成に失敗:`, errorData);
+            continue; // エラーがあっても他のタスクは作成を続行
+          }
+
+          const newTask = await taskResponse.json();
+          console.log('作成されたタスク:', newTask);
+          
+          // タスクリストを更新
+          setTasks(prev => [...prev, {
+            ...newTask,
+            createdAt: new Date(newTask.createdAt),
+            updatedAt: new Date(newTask.updatedAt),
+          }]);
+        }
+      }
+
+      alert('デフォルト工程・作業をデータベースに保存しました！');
+      console.log('デフォルト構造作成完了');
+      
+    } catch (error) {
+      console.error('デフォルト構造作成エラー:', error);
+      alert(`デフォルト構造の作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    }
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <p className="text-gray-500">読み込み中...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">エラーが発生しました</h1>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button
+            onClick={() => router.push('/projects')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            プロジェクト一覧に戻る
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!project) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">プロジェクトが見つかりません</h1>
+          <button
+            onClick={() => router.push('/projects')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            プロジェクト一覧に戻る
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -387,12 +599,10 @@ export default function ProjectPhasesPage() {
             </div>
           ) : (
             phases.map((phase) => {
-              const phaseTasks = state.tasks
+              const phaseTasks = tasks
                 .filter(t => t.phaseId === phase.id)
                 .sort((a, b) => a.order - b.order);
               
-              const phaseTimeEntries = state.timeEntries.filter(e => e.phaseId === phase.id);
-              const totalHours = phaseTimeEntries.reduce((sum, entry) => sum + entry.hours, 0);
               const estimatedHours = phaseTasks.reduce((sum, task) => sum + task.estimatedHours, 0);
 
               return (
@@ -407,7 +617,6 @@ export default function ProjectPhasesPage() {
                         <div className="flex space-x-4 mt-2 text-sm text-gray-600">
                           <span>作業数: {phaseTasks.length}</span>
                           <span>見積: {estimatedHours}h</span>
-                          <span>実績: {totalHours.toFixed(1)}h</span>
                         </div>
                       </div>
                       <div className="flex space-x-2">
@@ -442,9 +651,6 @@ export default function ProjectPhasesPage() {
                     ) : (
                       <div className="space-y-3">
                         {phaseTasks.map((task) => {
-                          const taskTimeEntries = state.timeEntries.filter(e => e.taskId === task.id);
-                          const taskHours = taskTimeEntries.reduce((sum, entry) => sum + entry.hours, 0);
-
                           return (
                             <div key={task.id} className="border border-gray-200 rounded-md p-4">
                               <div className="flex items-center justify-between">
@@ -455,14 +661,6 @@ export default function ProjectPhasesPage() {
                                   )}
                                   <div className="flex space-x-4 mt-2 text-xs text-gray-600">
                                     <span>見積: {task.estimatedHours}h</span>
-                                    <span>実績: {taskHours.toFixed(1)}h</span>
-                                    {task.estimatedHours > 0 && (
-                                      <span className={`${
-                                        taskHours > task.estimatedHours ? 'text-red-600' : 'text-green-600'
-                                      }`}>
-                                        進捗: {((taskHours / task.estimatedHours) * 100).toFixed(0)}%
-                                      </span>
-                                    )}
                                   </div>
                                 </div>
                                 <div className="flex space-x-2">
