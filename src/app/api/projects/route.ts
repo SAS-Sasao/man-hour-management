@@ -40,14 +40,85 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, description, startDate, endDate, managerId, status } = body;
 
+    // バリデーション
+    if (!name || name.trim() === '') {
+      return NextResponse.json(
+        { success: false, error: 'プロジェクト名は必須です' },
+        { status: 400 }
+      );
+    }
+
+    if (!startDate) {
+      return NextResponse.json(
+        { success: false, error: '開始日は必須です' },
+        { status: 400 }
+      );
+    }
+
+    if (!managerId) {
+      return NextResponse.json(
+        { success: false, error: 'プロジェクトマネージャーは必須です' },
+        { status: 400 }
+      );
+    }
+
+    // 日付バリデーション
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : null;
+
+    if (isNaN(start.getTime())) {
+      return NextResponse.json(
+        { success: false, error: '開始日の形式が正しくありません' },
+        { status: 400 }
+      );
+    }
+
+    if (end && isNaN(end.getTime())) {
+      return NextResponse.json(
+        { success: false, error: '終了日の形式が正しくありません' },
+        { status: 400 }
+      );
+    }
+
+    if (end && start > end) {
+      return NextResponse.json(
+        { success: false, error: '終了日は開始日より後の日付を指定してください' },
+        { status: 400 }
+      );
+    }
+
+    // マネージャーの存在確認
+    const manager = await prisma.user.findUnique({
+      where: { id: managerId }
+    });
+
+    if (!manager) {
+      return NextResponse.json(
+        { success: false, error: '指定されたマネージャーが見つかりません' },
+        { status: 400 }
+      );
+    }
+
+    // 同名プロジェクトの重複チェック
+    const existingProject = await prisma.project.findFirst({
+      where: { name: name.trim() }
+    });
+
+    if (existingProject) {
+      return NextResponse.json(
+        { success: false, error: 'このプロジェクト名は既に使用されています' },
+        { status: 400 }
+      );
+    }
+
     const project = await prisma.project.create({
       data: {
-        name,
-        description,
-        startDate: new Date(startDate),
-        endDate: endDate ? new Date(endDate) : null,
+        name: name.trim(),
+        description: description?.trim() || '',
+        startDate: start,
+        endDate: end,
         managerId,
-        status,
+        status: status || 'ACTIVE',
       },
       include: {
         manager: {
@@ -60,11 +131,15 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(project);
+    return NextResponse.json({
+      success: true,
+      data: project,
+      message: 'プロジェクトが作成されました'
+    });
   } catch (error) {
     console.error('プロジェクト作成エラー:', error);
     return NextResponse.json(
-      { error: 'プロジェクトの作成に失敗しました' },
+      { success: false, error: 'プロジェクトの作成に失敗しました' },
       { status: 500 }
     );
   }

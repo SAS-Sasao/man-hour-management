@@ -33,13 +33,19 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.error || 'ログインに失敗しました');
+        setError(responseData.error || 'ログインに失敗しました');
         return;
       }
       
-      const user = await response.json();
+      if (!responseData.success) {
+        setError(responseData.error || 'ログインに失敗しました');
+        return;
+      }
+      
+      const user = responseData.data;
       const userWithDates = {
         ...user,
         createdAt: new Date(user.createdAt),
@@ -109,13 +115,13 @@ export default function LoginPage() {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="form-input pl-12"
+                  className="form-input pl-6"
                   placeholder="your@email.com"
                   required
                   disabled={isLoading}
                 />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-400 text-xl">👤</span>
+                <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
+                  <span className="text-gray-400 text-xs">👤</span>
                 </div>
               </div>
             </div>
@@ -131,13 +137,13 @@ export default function LoginPage() {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="form-input pl-12"
+                  className="form-input pl-6"
                   placeholder="••••••••"
                   required
                   disabled={isLoading}
                 />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-400 text-xl">🔑</span>
+                <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
+                  <span className="text-gray-400 text-xs">🔑</span>
                 </div>
               </div>
             </div>

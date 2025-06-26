@@ -6,6 +6,14 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
+    // バリデーション
+    if (!email || !password) {
+      return NextResponse.json(
+        { success: false, error: 'メールアドレスとパスワードは必須です' },
+        { status: 400 }
+      );
+    }
+
     // データベースからユーザーを検索
     const user = await prisma.user.findUnique({
       where: { email }
@@ -15,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'メールアドレスまたはパスワードが正しくありません' },
+        { success: false, error: 'メールアドレスまたはパスワードが正しくありません' },
         { status: 401 }
       );
     }
@@ -24,7 +32,7 @@ export async function POST(request: NextRequest) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: 'メールアドレスまたはパスワードが正しくありません' },
+        { success: false, error: 'メールアドレスまたはパスワードが正しくありません' },
         { status: 401 }
       );
     }
@@ -32,14 +40,16 @@ export async function POST(request: NextRequest) {
     // パスワードを除外してユーザー情報を返す
     const { password: _, ...userWithoutPassword } = user;
     
-    return NextResponse.json(userWithoutPassword);
+    return NextResponse.json({
+      success: true,
+      data: userWithoutPassword,
+      message: 'ログインに成功しました'
+    });
   } catch (error) {
     console.error('ログインエラー:', error);
     return NextResponse.json(
-      { error: 'ログイン処理中にエラーが発生しました' },
+      { success: false, error: 'ログイン処理中にエラーが発生しました' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

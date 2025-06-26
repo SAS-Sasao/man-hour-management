@@ -88,13 +88,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                  {state.currentUser.name.charAt(0)}
+                  {state.currentUser?.name?.charAt(0) || '?'}
                 </div>
                 <div className="hidden md:block">
-                  <div className="text-sm font-medium text-gray-900">{state.currentUser.name}</div>
+                  <div className="text-sm font-medium text-gray-900">{state.currentUser?.name || 'ユーザー'}</div>
                   <div className="text-xs text-gray-500">
-                    {state.currentUser.role === 'ADMIN' ? '管理者' :
-                     state.currentUser.role === 'MANAGER' ? 'マネージャー' : 'メンバー'}
+                    {state.currentUser?.role === 'ADMIN' ? '管理者' :
+                     state.currentUser?.role === 'MANAGER' ? 'マネージャー' : 'メンバー'}
                   </div>
                 </div>
               </div>

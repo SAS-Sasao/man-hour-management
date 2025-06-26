@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import bcrypt from 'bcryptjs';
 import { User, Project, Phase, Task, TimeEntry } from '../types';
-import { createDefaultPhasesAndTasks } from '../utils/defaultData';
 
 interface AppState {
   currentUser: User | null;
@@ -225,12 +224,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ローカルストレージから現在のユーザー情報を取得（ログイン状態の保持）
         const savedCurrentUser = localStorage.getItem('manhour-current-user');
         if (savedCurrentUser) {
-          const currentUser = JSON.parse(savedCurrentUser);
-          dispatch({ type: 'SET_CURRENT_USER', payload: {
-            ...currentUser,
-            createdAt: new Date(currentUser.createdAt),
-            updatedAt: new Date(currentUser.updatedAt),
-          }});
+          try {
+            const currentUser = JSON.parse(savedCurrentUser);
+            // ユーザー情報の必須フィールドをチェック
+            if (currentUser && currentUser.id && currentUser.name && currentUser.email) {
+              dispatch({ type: 'SET_CURRENT_USER', payload: {
+                ...currentUser,
+                createdAt: new Date(currentUser.createdAt),
+                updatedAt: new Date(currentUser.updatedAt),
+              }});
+            } else {
+              // 不完全なユーザー情報の場合はクリア
+              localStorage.removeItem('manhour-current-user');
+            }
+          } catch (error) {
+            console.error('ローカルストレージのユーザー情報が破損しています:', error);
+            localStorage.removeItem('manhour-current-user');
+          }
         }
       } catch (error) {
         console.error('Failed to load data from API:', error);

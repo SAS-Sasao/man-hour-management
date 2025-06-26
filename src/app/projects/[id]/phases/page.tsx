@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Layout from '../../../../components/Layout';
 import { Phase, Task, Project } from '../../../../types';
-import { DEFAULT_PHASES, DEFAULT_TASKS } from '../../../../utils/defaultData';
 
 export default function ProjectPhasesPage() {
   const params = useParams();
@@ -103,9 +102,35 @@ export default function ProjectPhasesPage() {
     
     try {
       if (editingPhase) {
-        // TODO: フェーズ更新API（後で実装）
-        alert('フェーズ更新機能は未実装です');
-        return;
+        // フェーズ更新
+        const response = await fetch(`/api/phases/${editingPhase.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: phaseForm.name,
+            description: phaseForm.description,
+          }),
+        });
+
+        if (response.ok) {
+          const updatedPhase = await response.json();
+          setPhases(prev => prev.map(phase => 
+            phase.id === editingPhase.id 
+              ? {
+                  ...updatedPhase.data,
+                  createdAt: new Date(updatedPhase.data.createdAt),
+                  updatedAt: new Date(updatedPhase.data.updatedAt),
+                }
+              : phase
+          ).sort((a, b) => a.order - b.order));
+          alert('工程が更新されました');
+        } else {
+          const errorData = await response.json();
+          alert(`工程の更新に失敗しました: ${errorData.error || '不明なエラー'}`);
+          return;
+        }
       } else {
         // フェーズ新規作成
         const response = await fetch('/api/phases', {
@@ -121,12 +146,16 @@ export default function ProjectPhasesPage() {
         });
 
         if (response.ok) {
-          const newPhase = await response.json();
+          const result = await response.json();
+          const newPhase = result.data || result; // 新しい形式と古い形式の両方に対応
           setPhases(prev => [...prev, {
             ...newPhase,
             createdAt: new Date(newPhase.createdAt),
             updatedAt: new Date(newPhase.updatedAt),
           }].sort((a, b) => a.order - b.order));
+          if (result.message) {
+            alert(result.message);
+          }
         } else {
           const errorData = await response.json();
           alert(`フェーズの作成に失敗しました: ${errorData.error || '不明なエラー'}`);
@@ -239,15 +268,30 @@ export default function ProjectPhasesPage() {
   const handleDeletePhase = async (phaseId: string) => {
     const tasksInPhase = tasks.filter(t => t.phaseId === phaseId);
     
+    let confirmMessage = 'この工程を削除しますか？';
     if (tasksInPhase.length > 0) {
-      if (!confirm('この工程には作業が含まれています。削除しますか？')) {
-        return;
-      }
+      confirmMessage = `この工程には${tasksInPhase.length}個の作業が含まれています。工程と関連する全ての作業・工数入力データが削除されます。削除しますか？`;
+    }
+    
+    if (!confirm(confirmMessage)) {
+      return;
     }
     
     try {
-      // TODO: フェーズ削除API（後で実装）
-      alert('フェーズ削除機能は未実装です');
+      const response = await fetch(`/api/phases/${phaseId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // フェーズリストから削除
+        setPhases(prev => prev.filter(phase => phase.id !== phaseId));
+        // 関連するタスクも削除
+        setTasks(prev => prev.filter(task => task.phaseId !== phaseId));
+        alert('工程が削除されました');
+      } else {
+        const errorData = await response.json();
+        alert(`工程の削除に失敗しました: ${errorData.error || '不明なエラー'}`);
+      }
     } catch (error) {
       console.error('フェーズ削除エラー:', error);
       alert('フェーズの削除に失敗しました');
@@ -278,94 +322,6 @@ export default function ProjectPhasesPage() {
     }
   };
 
-  const handleCreateDefaultStructure = async () => {
-    if (phases.length > 0) {
-      if (!confirm('既存の工程・作業があります。デフォルト構造を追加しますか？')) {
-        return;
-      }
-    }
-
-    try {
-      console.log('デフォルト構造作成開始...');
-      console.log('プロジェクトID:', projectId);
-      
-      // 各フェーズを順次作成
-      for (const phaseData of DEFAULT_PHASES) {
-        console.log(`フェーズ「${phaseData.name}」を作成中...`);
-        
-        // フェーズをAPIで作成
-        const phaseResponse = await fetch('/api/phases', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            projectId,
-            name: phaseData.name,
-            description: phaseData.description,
-          }),
-        });
-
-        if (!phaseResponse.ok) {
-          const errorData = await phaseResponse.json();
-          console.error('フェーズ作成エラー詳細:', errorData);
-          throw new Error(`フェーズ「${phaseData.name}」の作成に失敗: ${errorData.error || 'Unknown error'}`);
-        }
-
-        const newPhase = await phaseResponse.json();
-        console.log('作成されたフェーズ:', newPhase);
-        
-        // フェーズリストを更新
-        setPhases(prev => [...prev, {
-          ...newPhase,
-          createdAt: new Date(newPhase.createdAt),
-          updatedAt: new Date(newPhase.updatedAt),
-        }].sort((a, b) => a.order - b.order));
-
-        // このフェーズにデフォルトタスクを作成
-        for (const taskData of DEFAULT_TASKS) {
-          console.log(`  タスク「${taskData.name}」を作成中...`);
-          
-          const taskResponse = await fetch('/api/tasks', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              phaseId: newPhase.id, // 実際に作成されたフェーズのIDを使用
-              projectId,
-              name: taskData.name,
-              description: taskData.description,
-              estimatedHours: 0,
-            }),
-          });
-
-          if (!taskResponse.ok) {
-            const errorData = await taskResponse.json();
-            console.error(`タスク「${taskData.name}」の作成に失敗:`, errorData);
-            continue; // エラーがあっても他のタスクは作成を続行
-          }
-
-          const newTask = await taskResponse.json();
-          console.log('作成されたタスク:', newTask);
-          
-          // タスクリストを更新
-          setTasks(prev => [...prev, {
-            ...newTask,
-            createdAt: new Date(newTask.createdAt),
-            updatedAt: new Date(newTask.updatedAt),
-          }]);
-        }
-      }
-
-      alert('デフォルト工程・作業をデータベースに保存しました！');
-      console.log('デフォルト構造作成完了');
-      
-    } catch (error) {
-      console.error('デフォルト構造作成エラー:', error);
-      alert(`デフォルト構造の作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
 
   if (loading) {
     return (
@@ -425,12 +381,6 @@ export default function ProjectPhasesPage() {
             <p className="mt-2 text-sm text-gray-500">工程・作業マスタ管理</p>
           </div>
           <div className="flex space-x-3">
-            <button
-              onClick={handleCreateDefaultStructure}
-              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
-            >
-              デフォルト構造作成
-            </button>
             <button
               onClick={() => setShowPhaseForm(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"

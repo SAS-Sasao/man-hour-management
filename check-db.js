@@ -1,10 +1,13 @@
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+});
 
 async function checkDatabase() {
   try {
     console.log('データベース接続テスト中...');
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
     
     // ユーザー数を確認
     const userCount = await prisma.user.count();
