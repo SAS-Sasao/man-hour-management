@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import bcrypt from 'bcryptjs';
 import { User, Project, Phase, Task, TimeEntry } from '../types';
 
 interface AppState {

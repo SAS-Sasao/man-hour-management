@@ -30,6 +30,40 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, email, password, role } = body;
 
+    // バリデーション
+    if (!name || !email || !password || !role) {
+      return NextResponse.json(
+        { error: '必須項目が不足しています' },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'パスワードは8文字以上で入力してください' },
+        { status: 400 }
+      );
+    }
+
+    if (!['ADMIN', 'MANAGER', 'MEMBER'].includes(role)) {
+      return NextResponse.json(
+        { error: '無効な権限が指定されています' },
+        { status: 400 }
+      );
+    }
+
+    // メールアドレスの重複チェック
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'このメールアドレスは既に使用されています' },
+        { status: 400 }
+      );
+    }
+
     // パスワードをハッシュ化
     const hashedPassword = await bcrypt.hash(password, 10);
 

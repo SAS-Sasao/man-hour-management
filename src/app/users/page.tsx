@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import bcrypt from 'bcryptjs';
+import { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { useApp } from '../../contexts/AppContext';
 import { User } from '../../types';
@@ -12,12 +11,33 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | User['role']>('ALL');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: 'MEMBER' as User['role'],
     password: ''
   });
+
+  // ページ読み込み時にユーザー一覧を取得
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const users = await response.json();
+        // Context APIのユーザーリストを更新
+        dispatch({ type: 'SET_USERS', payload: users });
+      } else {
+        console.error('ユーザー取得に失敗しました');
+      }
+    } catch (error) {
+      console.error('ユーザー取得エラー:', error);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -32,57 +52,76 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (state.users.some(user => user.email === formData.email && (!editingUser || user.id !== editingUser.id))) {
-      alert('このメールアドレスは既に使用されています');
-      return;
-    }
+    setLoading(true);
 
     if (!editingUser && !formData.password) {
       alert('パスワードを入力してください');
+      setLoading(false);
       return;
     }
 
     if (formData.password && formData.password.length < 8) {
       alert('パスワードは8文字以上で入力してください');
+      setLoading(false);
       return;
     }
 
     try {
       if (editingUser) {
-        const updatedUser: User = {
-          ...editingUser,
+        // ユーザー更新
+        const updateData: any = {
           name: formData.name,
           email: formData.email,
           role: formData.role,
-          updatedAt: new Date()
         };
 
-        // パスワードが入力されている場合のみハッシュ化して更新
+        // パスワードが入力されている場合のみ含める
         if (formData.password) {
-          const hashedPassword = await bcrypt.hash(formData.password, 10);
-          updatedUser.password = hashedPassword;
+          updateData.password = formData.password;
         }
 
-        dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-      } else {
-        const hashedPassword = await bcrypt.hash(formData.password, 10);
-        const newUser: User = {
-          id: `user-${Date.now()}`,
-          name: formData.name,
-          email: formData.email,
-          password: hashedPassword,
-          role: formData.role,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        dispatch({ type: 'ADD_USER', payload: newUser });
-      }
+        const response = await fetch(`/api/users/${editingUser.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        });
 
-      resetForm();
+        if (response.ok) {
+          const updatedUser = await response.json();
+          dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+          alert('ユーザーが正常に更新されました');
+          resetForm();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'ユーザーの更新に失敗しました');
+        }
+      } else {
+        // ユーザー作成
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+          const newUser = await response.json();
+          dispatch({ type: 'ADD_USER', payload: newUser });
+          alert('ユーザーが正常に作成されました');
+          resetForm();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'ユーザーの作成に失敗しました');
+        }
+      }
     } catch (error) {
-      console.error('パスワードの処理中にエラーが発生しました:', error);
+      console.error('ユーザー操作エラー:', error);
       alert('ユーザーの作成/更新中にエラーが発生しました');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -97,36 +136,36 @@ export default function UsersPage() {
     setShowCreateForm(true);
   };
 
-  const handleDelete = (userId: string) => {
-    if (confirm('このユーザーを削除しますか？関連する工数データも削除されます。')) {
-      dispatch({ type: 'DELETE_USER', payload: userId });
-      
-      const relatedTimeEntries = state.timeEntries.filter(entry => entry.userId === userId);
-      relatedTimeEntries.forEach(entry => {
-        dispatch({ type: 'DELETE_TIME_ENTRY', payload: entry.id });
-      });
-    }
-  };
-
-  const addPredefinedUser = async () => {
-    const hashedPassword = await bcrypt.hash('ts05140952', 10);
-    const predefinedUser: User = {
-      id: `user-${Date.now()}`,
-      name: '笹尾 豊樹',
-      email: 'sasao@sas-com.com',
-      password: hashedPassword,
-      role: 'ADMIN',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    if (state.users.some(user => user.email === predefinedUser.email)) {
-      alert('このユーザーは既に登録されています');
+  const handleDelete = async (userId: string) => {
+    if (!confirm('このユーザーを削除しますか？関連する工数データも削除されます。')) {
       return;
     }
 
-    dispatch({ type: 'ADD_USER', payload: predefinedUser });
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        dispatch({ type: 'DELETE_USER', payload: userId });
+        
+        // 関連する工数データも削除
+        const relatedTimeEntries = state.timeEntries.filter(entry => entry.userId === userId);
+        relatedTimeEntries.forEach(entry => {
+          dispatch({ type: 'DELETE_TIME_ENTRY', payload: entry.id });
+        });
+        
+        alert('ユーザーが正常に削除されました');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'ユーザーの削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('ユーザー削除エラー:', error);
+      alert('ユーザーの削除中にエラーが発生しました');
+    }
   };
+
 
   // フィルタリング
   const filteredUsers = state.users.filter(user => {
@@ -175,14 +214,7 @@ export default function UsersPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={addPredefinedUser}
-                  className="btn-success hover-lift flex items-center space-x-2 px-6 py-3"
-                >
-                  <span className="text-xl">👤</span>
-                  <span>笹尾さんを追加</span>
-                </button>
+              <div className="flex justify-end">
                 <button
                   onClick={() => setShowCreateForm(true)}
                   className="btn-primary hover-lift flex items-center space-x-2 px-6 py-3"
@@ -506,7 +538,7 @@ export default function UsersPage() {
                             <span>📅</span>
                             <span>登録日</span>
                           </p>
-                          <p className="font-medium">{user.createdAt.toLocaleDateString('ja-JP')}</p>
+                          <p className="font-medium">{new Date(user.createdAt).toLocaleDateString('ja-JP')}</p>
                         </div>
                       </div>
 
