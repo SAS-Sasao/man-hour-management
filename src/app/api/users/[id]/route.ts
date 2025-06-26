@@ -74,10 +74,16 @@ export async function PUT(
     }
 
     // 更新データの準備
-    const updateData: any = {
+    const updateData: {
+      name: string;
+      email: string;
+      role: 'ADMIN' | 'MANAGER' | 'MEMBER';
+      updatedAt: Date;
+      password?: string;
+    } = {
       name,
       email,
-      role,
+      role: role as 'ADMIN' | 'MANAGER' | 'MEMBER',
       updatedAt: new Date(),
     };
 

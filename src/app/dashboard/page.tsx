@@ -375,7 +375,6 @@ export default function Dashboard() {
                     const project = state.projects.find(p => p.id === entry.projectId);
                     const user = state.users.find(u => u.id === entry.userId);
                     const phase = state.phases.find(p => p.id === entry.phaseId);
-                    const task = state.tasks.find(t => t.id === entry.taskId);
                     return (
                       <div key={entry.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow duration-200">
                         <div>

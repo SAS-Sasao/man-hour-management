@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // パスワードを除外してユーザー情報を準備
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 
     // JWTトークンを作成（7日間有効）

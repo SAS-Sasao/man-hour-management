@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Layout from '../../components/Layout';
 import { useApp } from '../../contexts/AppContext';
 import { MonthlyReport } from '../../types';
-import { HOURS_PER_DAY, hoursToPersonDays, formatPersonDays, formatHoursAndPersonDays } from '../../utils/calculations';
+import { hoursToPersonDays, formatPersonDays } from '../../utils/calculations';
 
 type ViewMode = 'monthly' | 'hourly' | 'person';
 
@@ -20,8 +20,8 @@ export default function ReportsPage() {
     let filteredEntries = state.timeEntries;
 
     // メンバー権限の場合は自分のデータのみに制限
-    if (state.currentUser?.role === 'MEMBER') {
-      filteredEntries = filteredEntries.filter(entry => entry.userId === state.currentUser.id);
+    if (state.currentUser?.role === 'MEMBER' && state.currentUser) {
+      filteredEntries = filteredEntries.filter(entry => entry.userId === state.currentUser!.id);
     }
 
     if (viewMode === 'monthly') {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import bcrypt from 'bcryptjs';
 import { useApp } from '../../contexts/AppContext';
 import { useRouter } from 'next/navigation';
 
@@ -10,13 +9,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { state, dispatch } = useApp();
+  const { dispatch } = useApp();
   const router = useRouter();
-  
-  const handleReset = () => {
-    localStorage.clear();
-    window.location.reload();
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
