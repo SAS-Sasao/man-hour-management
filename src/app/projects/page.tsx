@@ -83,7 +83,8 @@ export default function ProjectsPage() {
         });
 
         if (response.ok) {
-          const newProject = await response.json();
+          const responseData = await response.json();
+          const newProject = responseData.data || responseData; // APIレスポンス形式に対応
           const project: Project = {
             ...newProject,
             startDate: new Date(newProject.startDate),
@@ -119,24 +120,41 @@ export default function ProjectsPage() {
     setShowCreateForm(true);
   };
 
-  const handleDelete = (projectId: string) => {
+  const handleDelete = async (projectId: string) => {
     if (confirm('このプロジェクトを削除しますか？関連する工程、作業、工数データもすべて削除されます。')) {
-      dispatch({ type: 'DELETE_PROJECT', payload: projectId });
-      
-      const relatedPhases = state.phases.filter(phase => phase.projectId === projectId);
-      relatedPhases.forEach(phase => {
-        dispatch({ type: 'DELETE_PHASE', payload: phase.id });
-      });
-      
-      const relatedTasks = state.tasks.filter(task => task.projectId === projectId);
-      relatedTasks.forEach(task => {
-        dispatch({ type: 'DELETE_TASK', payload: task.id });
-      });
-      
-      const relatedTimeEntries = state.timeEntries.filter(entry => entry.projectId === projectId);
-      relatedTimeEntries.forEach(entry => {
-        dispatch({ type: 'DELETE_TIME_ENTRY', payload: entry.id });
-      });
+      try {
+        const response = await fetch(`/api/projects/${projectId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          // APIで削除が成功した場合のみローカルステートを更新
+          dispatch({ type: 'DELETE_PROJECT', payload: projectId });
+          
+          const relatedPhases = state.phases.filter(phase => phase.projectId === projectId);
+          relatedPhases.forEach(phase => {
+            dispatch({ type: 'DELETE_PHASE', payload: phase.id });
+          });
+          
+          const relatedTasks = state.tasks.filter(task => task.projectId === projectId);
+          relatedTasks.forEach(task => {
+            dispatch({ type: 'DELETE_TASK', payload: task.id });
+          });
+          
+          const relatedTimeEntries = state.timeEntries.filter(entry => entry.projectId === projectId);
+          relatedTimeEntries.forEach(entry => {
+            dispatch({ type: 'DELETE_TIME_ENTRY', payload: entry.id });
+          });
+
+          alert('プロジェクトが正常に削除されました');
+        } else {
+          const errorData = await response.json();
+          alert(`プロジェクトの削除に失敗しました: ${errorData.error || '不明なエラー'}`);
+        }
+      } catch (error) {
+        console.error('プロジェクト削除エラー:', error);
+        alert('プロジェクトの削除に失敗しました');
+      }
     }
   };
 
@@ -144,8 +162,12 @@ export default function ProjectsPage() {
 
   // フィルタリング
   const filteredProjects = state.projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const projectName = project.name || '';
+    const projectDescription = project.description || '';
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    const matchesSearch = projectName.toLowerCase().includes(searchTermLower) ||
+                         projectDescription.toLowerCase().includes(searchTermLower);
     const matchesStatus = statusFilter === 'ALL' || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
