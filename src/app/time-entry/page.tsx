@@ -58,8 +58,10 @@ export default function TimeEntryPage() {
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const weeklyStats = (() => {
-    const startOfWeek = new Date(selectedDate);
-    startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+    // 本日の日付を基準にした今週の統計
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
