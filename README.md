@@ -1,36 +1,309 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 工数管理システム (Man-Hour Management System)
 
-## Getting Started
+企業やチームにおける工数管理を効率化し、プロジェクトの進捗管理と工数の可視化を実現するWebアプリケーションです。
 
-First, run the development server:
+## 📋 目次
+
+- [概要](#概要)
+- [主な機能](#主な機能)
+- [システム要件](#システム要件)
+- [インストール・セットアップ](#インストールセットアップ)
+- [使用方法](#使用方法)
+- [ユーザーロール](#ユーザーロール)
+- [画面構成](#画面構成)
+- [技術仕様](#技術仕様)
+- [トラブルシューティング](#トラブルシューティング)
+- [サポート](#サポート)
+
+## 🎯 概要
+
+工数管理システムは、プロジェクトベースの工数管理を行うためのWebアプリケーションです。チームメンバーが日々の作業時間を記録し、プロジェクトマネージャーが進捗状況を把握できる環境を提供します。
+
+### 主な特徴
+
+- **直感的なUI**: 使いやすいインターフェースで工数入力が簡単
+- **リアルタイム集計**: 入力された工数をリアルタイムで集計・可視化
+- **役割ベースアクセス**: 管理者、マネージャー、メンバーの3段階の権限管理
+- **プロジェクト管理**: プロジェクト、工程、タスクの階層管理
+- **レポート機能**: 工数データの分析とレポート出力
+
+## ✨ 主な機能
+
+### 1. ユーザー管理
+- ユーザー登録・認証
+- 役割ベースのアクセス制御（ADMIN、MANAGER、MEMBER）
+- セキュアなログイン・ログアウト機能
+
+### 2. プロジェクト管理
+- プロジェクトの作成・編集・削除
+- プロジェクトステータス管理（進行中、完了、保留）
+- プロジェクトマネージャーの割り当て
+
+### 3. 工程・タスク管理
+- プロジェクト内の工程（Phase）管理
+- 工程内のタスク管理
+- 見積工数の設定と実績との比較
+
+### 4. 工数入力・管理
+- 日次工数入力機能
+- 工数の編集・削除機能
+- 一括工数入力機能
+- カレンダー形式での工数確認
+
+### 5. ダッシュボード・レポート
+- プロジェクト別工数集計
+- 工程別工数集計
+- 月次レポート機能
+- 進捗状況の可視化
+
+## 💻 システム要件
+
+### 必要な環境
+- Node.js 18.0.0 以上
+- PostgreSQL 12.0 以上
+- モダンブラウザ（Chrome、Firefox、Safari、Edge）
+
+### 推奨環境
+- Node.js 20.0.0 以上
+- PostgreSQL 15.0 以上
+- メモリ: 4GB以上
+- ストレージ: 10GB以上の空き容量
+
+## 🚀 インストール・セットアップ
+
+### 1. リポジトリのクローン
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd man-hour-management
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. 依存関係のインストール
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. 環境変数の設定
 
-## Learn More
+`.env`ファイルを作成し、以下の環境変数を設定してください：
 
-To learn more about Next.js, take a look at the following resources:
+```env
+# データベース接続URL
+DATABASE_URL="postgresql://username:password@localhost:5432/manhour_db"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. データベースのセットアップ
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Prismaマイグレーションの実行
+npx prisma migrate dev
 
-## Deploy on Vercel
+# 初期データの投入（オプション）
+npx prisma db seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 5. アプリケーションの起動
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# 開発サーバーの起動
+npm run dev
+```
+
+アプリケーションは `http://localhost:3000` でアクセスできます。
+
+### 6. 初期管理者アカウントの作成
+
+初回起動時は、管理者画面（`/admin`）から初期データを作成してください。
+
+## 📖 使用方法
+
+### 初回ログイン
+
+1. ブラウザで `http://localhost:3000` にアクセス
+2. 管理者によって作成されたアカウントでログイン
+3. ダッシュボードが表示されます
+
+### 工数入力の流れ
+
+1. **プロジェクト選択**: 作業対象のプロジェクトを選択
+2. **工程・タスク選択**: 該当する工程とタスクを選択
+3. **工数入力**: 作業日、作業時間、作業内容を入力
+4. **保存**: 入力内容を確認して保存
+
+### プロジェクト管理（マネージャー以上）
+
+1. **プロジェクト作成**: 新規プロジェクトの基本情報を入力
+2. **工程設定**: プロジェクト内の工程を定義
+3. **タスク設定**: 各工程内のタスクを設定
+4. **メンバー割り当て**: プロジェクトメンバーを割り当て
+
+## 👥 ユーザーロール
+
+### ADMIN（管理者）
+- 全システムの管理権限
+- ユーザー管理（作成・編集・削除）
+- 全プロジェクトへのアクセス
+- システム設定の変更
+
+### MANAGER（マネージャー）
+- 担当プロジェクトの管理
+- プロジェクト・工程・タスクの作成・編集
+- チームメンバーの工数確認
+- レポートの閲覧・出力
+
+### MEMBER（メンバー）
+- 自分の工数入力・編集
+- 参加プロジェクトの閲覧
+- 自分の工数履歴の確認
+
+## 🖥️ 画面構成
+
+### メイン画面
+
+| 画面名 | URL | 説明 | アクセス権限 |
+|--------|-----|------|-------------|
+| ログイン | `/login` | システムへのログイン | 全ユーザー |
+| ダッシュボード | `/dashboard` | 工数サマリーと最近の活動 | 全ユーザー |
+| 工数入力 | `/time-entry` | 日次工数の入力・編集 | 全ユーザー |
+| プロジェクト一覧 | `/projects` | プロジェクト一覧と管理 | 全ユーザー |
+| プロジェクト詳細 | `/projects/[id]` | プロジェクトの詳細情報 | 全ユーザー |
+| 工程管理 | `/projects/[id]/phases` | 工程とタスクの管理 | MANAGER以上 |
+| ユーザー管理 | `/users` | ユーザーアカウントの管理 | ADMIN |
+| レポート | `/reports` | 工数レポートの閲覧 | MANAGER以上 |
+| 管理画面 | `/admin` | システム管理機能 | ADMIN |
+
+### 主要機能の操作方法
+
+#### 工数入力
+1. 「工数入力」メニューをクリック
+2. 日付を選択（デフォルトは今日）
+3. プロジェクト、工程、タスクを順番に選択
+4. 作業時間（時間）を入力
+5. 作業内容を記述（任意）
+6. 「保存」ボタンをクリック
+
+#### 一括工数入力
+1. 工数入力画面で「一括入力」ボタンをクリック
+2. 期間を指定
+3. 同じ作業内容を複数日に一括で入力可能
+
+## 🔧 技術仕様
+
+### フロントエンド
+- **フレームワーク**: Next.js 15.3.4
+- **言語**: TypeScript
+- **UIライブラリ**: React 19.0.0
+- **スタイリング**: Tailwind CSS 4.0
+- **状態管理**: React Context API
+
+### バックエンド
+- **API**: Next.js API Routes
+- **ORM**: Prisma 6.10.1
+- **データベース**: PostgreSQL
+- **認証**: bcryptjs（パスワードハッシュ化）
+
+### セキュリティ
+- パスワードのハッシュ化（bcryptjs）
+- セッションベース認証
+- 役割ベースアクセス制御（RBAC）
+- SQLインジェクション対策（Prisma ORM）
+
+### データベース構造
+
+```
+User (ユーザー)
+├── Project (プロジェクト) - 1:N（マネージャー関係）
+│   ├── Phase (工程) - 1:N
+│   │   └── Task (タスク) - 1:N
+│   └── TimeEntry (工数入力) - 1:N
+└── TimeEntry (工数入力) - 1:N
+```
+
+## 🔍 トラブルシューティング
+
+### よくある問題と解決方法
+
+#### データベース接続エラー
+```
+Error: Can't reach database server
+```
+**解決方法**:
+1. PostgreSQLサービスが起動しているか確認
+2. `.env`ファイルの`DATABASE_URL`が正しいか確認
+3. データベースが存在するか確認
+
+#### マイグレーションエラー
+```
+Error: Migration failed
+```
+**解決方法**:
+```bash
+# マイグレーションをリセット
+npx prisma migrate reset
+# 再度マイグレーション実行
+npx prisma migrate dev
+```
+
+#### ログインできない
+**解決方法**:
+1. 管理者画面（`/admin`）から初期データを作成
+2. ユーザーアカウントが正しく作成されているか確認
+3. パスワードが正しいか確認
+
+#### 工数入力時のエラー
+**解決方法**:
+1. プロジェクト、工程、タスクが正しく設定されているか確認
+2. 入力値（時間）が数値形式か確認
+3. 必須項目がすべて入力されているか確認
+
+### ログの確認方法
+
+開発環境でのログ確認：
+```bash
+# アプリケーションログ
+npm run dev
+
+# データベースログ
+npx prisma studio
+```
+
+## 📞 サポート
+
+### 開発・運用サポート
+
+技術的な問題や機能要望については、以下の方法でお問い合わせください：
+
+1. **Issue報告**: GitHubのIssueページで問題を報告
+2. **機能要望**: 新機能の提案や改善要望
+3. **バグ報告**: 不具合の詳細な報告
+
+### システム管理者向け情報
+
+#### 定期メンテナンス
+- データベースのバックアップ（推奨：日次）
+- ログファイルのローテーション
+- セキュリティアップデートの適用
+
+#### パフォーマンス監視
+- データベースのパフォーマンス監視
+- アプリケーションのレスポンス時間監視
+- ディスク使用量の監視
+
+---
+
+## 📄 ライセンス
+
+このプロジェクトは社内利用を目的として開発されています。
+
+## 🔄 更新履歴
+
+- **v0.1.0** (2025/06): 初期リリース
+  - 基本的な工数管理機能
+  - ユーザー管理機能
+  - プロジェクト管理機能
+  - ダッシュボード機能
+
+---
+
+**工数管理システム開発チーム**
