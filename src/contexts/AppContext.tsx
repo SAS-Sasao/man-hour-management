@@ -145,13 +145,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 初期データを作成
-        try {
-          await fetch('/api/admin/init-data', { method: 'POST' });
-        } catch (initError) {
-          console.log('初期データ作成をスキップ:', initError);
-        }
-
         // APIからユーザーデータを取得
         const usersResponse = await fetch('/api/users');
         if (usersResponse.ok) {
