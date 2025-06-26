@@ -315,9 +315,19 @@ npx prisma studio
 
 本番環境用のPostgreSQLデータベースを準備してください。推奨サービス：
 
-- **Neon** (https://neon.tech/) - PostgreSQL専用、無料プランあり
+- **Neon** (https://neon.tech/) - PostgreSQL専用、無料プランあり ⭐ **現在使用中**
 - **Supabase** (https://supabase.com/) - PostgreSQL + 追加機能、無料プランあり
 - **PlanetScale** (https://planetscale.com/) - MySQL、無料プランあり
+
+#### 現在の本番環境設定（Neon使用）
+
+このプロジェクトでは **Neon PostgreSQL** を使用しています：
+
+- **プロバイダー**: Neon (https://neon.tech/)
+- **リージョン**: US East (N. Virginia) - aws-us-east-1
+- **データベース名**: neondb
+- **接続方式**: Connection Pooling有効
+- **SSL**: 必須（sslmode=require）
 
 ### 2. Vercelプロジェクトの作成
 
