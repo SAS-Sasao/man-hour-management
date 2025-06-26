@@ -10,6 +10,8 @@ interface AppState {
   phases: Phase[];
   tasks: Task[];
   timeEntries: TimeEntry[];
+  isLoading: boolean;
+  isSessionChecked: boolean;
 }
 
 type AppAction =
@@ -33,7 +35,9 @@ type AppAction =
   | { type: 'SET_TIME_ENTRIES'; payload: TimeEntry[] }
   | { type: 'ADD_TIME_ENTRY'; payload: TimeEntry }
   | { type: 'UPDATE_TIME_ENTRY'; payload: TimeEntry }
-  | { type: 'DELETE_TIME_ENTRY'; payload: string };
+  | { type: 'DELETE_TIME_ENTRY'; payload: string }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_SESSION_CHECKED'; payload: boolean };
 
 const initialState: AppState = {
   currentUser: null,
@@ -42,6 +46,8 @@ const initialState: AppState = {
   phases: [],
   tasks: [],
   timeEntries: [],
+  isLoading: true,
+  isSessionChecked: false,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -128,6 +134,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         timeEntries: state.timeEntries.filter(entry => entry.id !== action.payload),
       };
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_SESSION_CHECKED':
+      return { ...state, isSessionChecked: action.payload };
     default:
       return state;
   }
@@ -144,6 +154,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadData = async () => {
       try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        
+        // 既にログイン済みの場合はセッション確認をスキップ
+        const storedUser = localStorage.getItem('manhour-current-user');
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            const userWithDates = {
+              ...parsedUser,
+              createdAt: new Date(parsedUser.createdAt),
+              updatedAt: new Date(parsedUser.updatedAt),
+            };
+            dispatch({ type: 'SET_CURRENT_USER', payload: userWithDates });
+            console.log('ローカルストレージから復元されたユーザー:', userWithDates);
+          } catch (parseError) {
+            console.error('ローカルストレージのユーザー情報解析エラー:', parseError);
+            localStorage.removeItem('manhour-current-user');
+          }
+        } else {
+          // ローカルストレージにユーザー情報がない場合のみセッション確認
+          try {
+            const sessionResponse = await fetch('/api/auth/session');
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json();
+              if (sessionData.success && sessionData.data) {
+                const currentUser = {
+                  ...sessionData.data,
+                  createdAt: new Date(sessionData.data.createdAt),
+                  updatedAt: new Date(sessionData.data.updatedAt),
+                };
+                dispatch({ type: 'SET_CURRENT_USER', payload: currentUser });
+                console.log('セッションから復元されたユーザー:', currentUser);
+              }
+            } else {
+              dispatch({ type: 'SET_CURRENT_USER', payload: null });
+            }
+          } catch (sessionError) {
+            console.log('セッション確認エラー:', sessionError);
+            dispatch({ type: 'SET_CURRENT_USER', payload: null });
+          }
+        }
+        
+        // セッションチェック完了をマーク
+        dispatch({ type: 'SET_SESSION_CHECKED', payload: true });
+
         // APIからユーザーデータを取得
         const usersResponse = await fetch('/api/users');
         if (usersResponse.ok) {
@@ -212,30 +267,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }));
           dispatch({ type: 'SET_TIME_ENTRIES', payload: timeEntriesWithDates });
         }
-
-        // ローカルストレージから現在のユーザー情報を取得（ログイン状態の保持）
-        const savedCurrentUser = localStorage.getItem('manhour-current-user');
-        if (savedCurrentUser) {
-          try {
-            const currentUser = JSON.parse(savedCurrentUser);
-            // ユーザー情報の必須フィールドをチェック
-            if (currentUser && currentUser.id && currentUser.name && currentUser.email) {
-              dispatch({ type: 'SET_CURRENT_USER', payload: {
-                ...currentUser,
-                createdAt: new Date(currentUser.createdAt),
-                updatedAt: new Date(currentUser.updatedAt),
-              }});
-            } else {
-              // 不完全なユーザー情報の場合はクリア
-              localStorage.removeItem('manhour-current-user');
-            }
-          } catch (error) {
-            console.error('ローカルストレージのユーザー情報が破損しています:', error);
-            localStorage.removeItem('manhour-current-user');
-          }
-        }
       } catch (error) {
         console.error('Failed to load data from API:', error);
+        // エラーが発生してもセッションチェック完了をマーク
+        dispatch({ type: 'SET_SESSION_CHECKED', payload: true });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
 

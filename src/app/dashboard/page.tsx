@@ -10,13 +10,47 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!state.currentUser) {
+    // セッションチェックが完了してからリダイレクト判定を行う
+    if (state.isSessionChecked && !state.currentUser) {
+      console.log('ユーザーが見つからないため、ログイン画面にリダイレクトします');
       router.push('/login');
     }
-  }, [state.currentUser, router]);
+  }, [state.currentUser, state.isSessionChecked, router]);
 
+  // セッションチェック中またはローディング中の場合はローディング画面を表示
+  if (!state.isSessionChecked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">認証確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // セッションチェック完了後、ユーザーが存在しない場合は何も表示しない（リダイレクト処理中）
   if (!state.currentUser) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">リダイレクト中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // データローディング中の場合はローディング画面を表示
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">データ読み込み中...</p>
+        </div>
+      </div>
+    );
   }
 
   // 現在の日時情報
@@ -28,7 +62,7 @@ export default function Dashboard() {
 
   // 自分の工数データのみフィルタリング（メンバーの場合）
   const userTimeEntries = state.currentUser?.role === 'MEMBER' 
-    ? state.timeEntries.filter(entry => entry.userId === state.currentUser.id)
+    ? state.timeEntries.filter(entry => entry.userId === state.currentUser!.id)
     : state.timeEntries;
 
   const stats = {

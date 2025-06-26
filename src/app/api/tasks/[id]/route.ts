@@ -1,6 +1,58 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
 
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const taskId = params.id;
+    
+    console.log('タスク取得要求:', taskId);
+
+    // タスクの取得
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        phase: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            timeEntries: true,
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      return NextResponse.json(
+        { error: 'タスクが見つかりません' },
+        { status: 404 }
+      );
+    }
+
+    console.log('タスク取得完了:', taskId);
+    return NextResponse.json(task);
+    
+  } catch (error) {
+    console.error('タスク取得エラー:', error);
+    return NextResponse.json(
+      { error: 'タスクの取得に失敗しました', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }

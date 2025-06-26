@@ -8,8 +8,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { state, dispatch } = useApp();
   const pathname = usePathname();
 
-  const handleLogout = () => {
-    dispatch({ type: 'SET_CURRENT_USER', payload: null });
+  const handleLogout = async () => {
+    try {
+      // セッション削除APIを呼び出し
+      await fetch('/api/auth/session', {
+        method: 'DELETE',
+      });
+      
+      // ローカルストレージもクリア
+      localStorage.removeItem('manhour-current-user');
+      
+      // 状態をクリア
+      dispatch({ type: 'SET_CURRENT_USER', payload: null });
+      
+      // ログアウト後はログインページにリダイレクト
+      window.location.href = '/login';
+      
+      console.log('ログアウトしました');
+    } catch (error) {
+      console.error('ログアウト中にエラーが発生しました:', error);
+      // エラーが発生してもローカル状態はクリア
+      localStorage.removeItem('manhour-current-user');
+      dispatch({ type: 'SET_CURRENT_USER', payload: null });
+      window.location.href = '/login';
+    }
   };
 
   const navigation = [
@@ -22,6 +44,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ] : []),
   ];
 
+  // セッションチェックが完了していない場合はローディング表示
+  if (!state.isSessionChecked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+            <span className="text-2xl">⏱️</span>
+          </div>
+          <p className="text-gray-600">セッションを確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ログインページの場合は認証チェックをスキップ
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
+  // 認証が必要なページで未認証の場合
   if (!state.currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">

@@ -322,6 +322,71 @@ export default function ProjectPhasesPage() {
     }
   };
 
+  const handleBulkInit = async () => {
+    if (phases.length > 0 || tasks.length > 0) {
+      alert('既に工程・作業が登録されているため、一括登録はできません。');
+      return;
+    }
+
+    const confirmMessage = `以下のデフォルト工程・作業を一括登録します：
+
+工程：
+• 要件定義
+• 基本設計
+• 開発
+• テスト
+• インフラ関連
+• 管理
+• その他
+
+作業：
+• 会議
+• 設計書作成
+• 仕様書作成
+• コーディング
+• 単体テスト
+• 結合テスト
+• 環境構築
+• アーキテクチャ作成
+• プロンプト作成
+• テーブル作成
+• CI/CD構築
+• テーブル一覧作成
+• 画面一覧作成
+• その他
+
+実行しますか？`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/projects/${projectId}/init-default`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+        // データを再取得して画面を更新
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        alert(`一括登録に失敗しました: ${errorData.error || '不明なエラー'}`);
+      }
+    } catch (error) {
+      console.error('一括登録エラー:', error);
+      alert('一括登録に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -381,6 +446,15 @@ export default function ProjectPhasesPage() {
             <p className="mt-2 text-sm text-gray-500">工程・作業マスタ管理</p>
           </div>
           <div className="flex space-x-3">
+            <button
+              onClick={handleBulkInit}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center space-x-2"
+              disabled={phases.length > 0 || tasks.length > 0}
+              title={phases.length > 0 || tasks.length > 0 ? "既に工程・作業が登録されているため一括登録はできません" : "デフォルトの工程・作業を一括登録"}
+            >
+              <span className="text-lg">⚡</span>
+              <span>一括登録</span>
+            </button>
             <button
               onClick={() => setShowPhaseForm(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"

@@ -57,10 +57,17 @@ export default function LoginPage() {
       
       // データベースから取得したユーザー情報をそのまま使用
       console.log('ログイン成功 - ユーザー情報:', userWithDates);
-      dispatch({ type: 'SET_USERS', payload: [userWithDates] });
       dispatch({ type: 'SET_CURRENT_USER', payload: userWithDates });
       
-      router.push('/dashboard');
+      // セッションチェック完了をマーク
+      dispatch({ type: 'SET_SESSION_CHECKED', payload: true });
+      dispatch({ type: 'SET_LOADING', payload: false });
+      
+      // 状態更新を確実に反映させるため少し待機してから遷移
+      setTimeout(() => {
+        console.log('ダッシュボードに遷移します');
+        router.push('/dashboard');
+      }, 100);
     } catch (error) {
       console.error('ログイン処理中にエラーが発生しました:', error);
       setError('ログイン処理中にエラーが発生しました');
