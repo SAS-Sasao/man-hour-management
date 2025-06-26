@@ -5,10 +5,11 @@ import { Phase, Task } from '@prisma/client';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+    const { id } = await params;
+    const projectId = id;
 
     // プロジェクトの存在確認
     const project = await prisma.project.findUnique({

@@ -3,10 +3,11 @@ import { prisma } from '../../../../../lib/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id } = await params;
+    const taskId = id;
     
     console.log('タスク取得要求:', taskId);
 
@@ -55,10 +56,11 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id } = await params;
+    const taskId = id;
     
     console.log('タスク削除要求:', taskId);
 
@@ -105,10 +107,11 @@ export async function DELETE(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id } = await params;
+    const taskId = id;
     const body = await request.json();
     
     console.log('タスク更新データ受信:', { taskId, ...body });

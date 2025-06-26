@@ -4,11 +4,12 @@ import { prisma } from '../../../../../lib/prisma';
 // プロジェクト取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         manager: true,
         phases: {
@@ -46,9 +47,10 @@ export async function GET(
 // プロジェクト更新
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, description, startDate, endDate, status, managerId } = body;
 
@@ -108,7 +110,7 @@ export async function PUT(
 
     // プロジェクト更新
     const updatedProject = await prisma.project.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         description,
@@ -148,12 +150,13 @@ export async function PUT(
 // プロジェクト削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // プロジェクトの存在確認
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         phases: {
           include: {
@@ -175,7 +178,7 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       // 時間入力を削除
       await tx.timeEntry.deleteMany({
-        where: { projectId: params.id }
+        where: { projectId: id }
       });
 
       // タスクを削除
@@ -187,12 +190,12 @@ export async function DELETE(
 
       // 工程を削除
       await tx.phase.deleteMany({
-        where: { projectId: params.id }
+        where: { projectId: id }
       });
 
       // プロジェクトを削除
       await tx.project.delete({
-        where: { id: params.id }
+        where: { id }
       });
     });
 

@@ -4,10 +4,10 @@ import { prisma } from '../../../../../lib/prisma';
 // Phase更新 (PUT)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { name, description } = body;
 
@@ -75,10 +75,10 @@ export async function PUT(
 // Phase削除 (DELETE)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // 既存のPhaseを確認
     const existingPhase = await prisma.phase.findUnique({
@@ -127,10 +127,10 @@ export async function DELETE(
 // Phase取得 (GET)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const phase = await prisma.phase.findUnique({
       where: { id },
