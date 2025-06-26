@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Layout from '../../../../components/Layout';
+import BulkPhaseTaskModal from '../../../../components/BulkPhaseTaskModal';
 import { Phase, Task, Project } from '../../../../types';
 
 export default function ProjectPhasesPage() {
@@ -18,6 +19,7 @@ export default function ProjectPhasesPage() {
   
   const [showPhaseForm, setShowPhaseForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedPhaseId, setSelectedPhaseId] = useState('');
@@ -453,7 +455,14 @@ export default function ProjectPhasesPage() {
               title={phases.length > 0 || tasks.length > 0 ? "既に工程・作業が登録されているため一括登録はできません" : "デフォルトの工程・作業を一括登録"}
             >
               <span className="text-lg">⚡</span>
-              <span>一括登録</span>
+              <span>クイック登録</span>
+            </button>
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 flex items-center space-x-2"
+            >
+              <span className="text-lg">🔧</span>
+              <span>カスタム一括登録</span>
             </button>
             <button
               onClick={() => setShowPhaseForm(true)}
@@ -609,6 +618,17 @@ export default function ProjectPhasesPage() {
             </form>
           </div>
         )}
+
+        {/* カスタム一括登録モーダル */}
+        <BulkPhaseTaskModal
+          isOpen={showBulkModal}
+          onClose={() => setShowBulkModal(false)}
+          onSuccess={() => {
+            // 成功時にデータを再取得
+            fetchData();
+          }}
+          projectId={projectId}
+        />
 
         <div className="space-y-6">
           {phases.length === 0 ? (

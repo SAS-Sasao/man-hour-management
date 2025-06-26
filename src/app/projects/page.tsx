@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
+import BulkProjectModal from '../../components/BulkProjectModal';
 import { useApp } from '../../contexts/AppContext';
 import { Project } from '../../types';
 
 export default function ProjectsPage() {
   const { state, dispatch } = useApp();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | Project['status']>('ALL');
@@ -199,13 +201,22 @@ export default function ProjectsPage() {
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="btn-primary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
-              >
-                <span className="text-xl">✨</span>
-                <span>新規プロジェクト</span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="btn-primary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
+                >
+                  <span className="text-xl">✨</span>
+                  <span>新規プロジェクト</span>
+                </button>
+                <button
+                  onClick={() => setShowBulkModal(true)}
+                  className="btn-secondary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
+                >
+                  <span className="text-xl">📋</span>
+                  <span>一括登録</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -442,6 +453,16 @@ export default function ProjectsPage() {
             </div>
           </div>
         )}
+
+        {/* 一括登録モーダル */}
+        <BulkProjectModal
+          isOpen={showBulkModal}
+          onClose={() => setShowBulkModal(false)}
+          onSuccess={() => {
+            // 成功時の処理（必要に応じてデータを再取得）
+            console.log('一括登録が完了しました');
+          }}
+        />
 
         {/* プロジェクト一覧 */}
         <div className="space-y-6">
