@@ -304,6 +304,102 @@ npx prisma studio
   - プロジェクト管理機能
   - ダッシュボード機能
 
+## 🚀 Vercelデプロイ手順
+
+### 前提条件
+- Vercelアカウントの作成
+- GitHubリポジトリの準備
+- PostgreSQLデータベースの準備（Neon、Supabase、PlanetScale等）
+
+### 1. データベースの準備
+
+本番環境用のPostgreSQLデータベースを準備してください。推奨サービス：
+
+- **Neon** (https://neon.tech/) - PostgreSQL専用、無料プランあり
+- **Supabase** (https://supabase.com/) - PostgreSQL + 追加機能、無料プランあり
+- **PlanetScale** (https://planetscale.com/) - MySQL、無料プランあり
+
+### 2. Vercelプロジェクトの作成
+
+1. Vercel Dashboard (https://vercel.com/dashboard) にアクセス
+2. 「New Project」をクリック
+3. GitHubリポジトリを選択してインポート
+
+### 3. 環境変数の設定
+
+Vercel Dashboard > Settings > Environment Variables で以下を設定：
+
+```env
+DATABASE_URL=postgresql://username:password@hostname:port/database_name?schema=public
+JWT_SECRET=your-super-secret-jwt-key-for-production
+```
+
+**重要**: 本番環境では強力なJWT_SECRETを生成してください：
+```bash
+# 強力なシークレットキーの生成例
+openssl rand -base64 32
+```
+
+### 4. ビルド設定の確認
+
+Vercel Dashboard > Settings > General で以下を確認：
+
+- **Framework Preset**: Next.js
+- **Build Command**: `prisma generate && next build` (自動設定済み)
+- **Output Directory**: `.next` (自動設定)
+- **Install Command**: `npm install` (自動設定)
+
+### 5. データベースマイグレーション
+
+初回デプロイ後、データベースのマイグレーションを実行：
+
+```bash
+# ローカルで本番データベースに対してマイグレーション実行
+DATABASE_URL="your-production-database-url" npx prisma migrate deploy
+
+# 初期データの投入（必要に応じて）
+DATABASE_URL="your-production-database-url" npx prisma db seed
+```
+
+### 6. デプロイの実行
+
+1. GitHubにコードをプッシュ
+2. Vercelが自動的にビルド・デプロイを開始
+3. デプロイ完了後、提供されるURLでアクセス確認
+
+### 7. 初期設定
+
+1. デプロイされたアプリケーションにアクセス
+2. `/admin` ページで初期データを作成
+3. 管理者アカウントでログインして動作確認
+
+### トラブルシューティング
+
+#### ビルドエラーが発生する場合
+```bash
+# ローカルでビルドテスト
+npm run build
+```
+
+#### データベース接続エラーの場合
+- 環境変数 `DATABASE_URL` が正しく設定されているか確認
+- データベースサービスが稼働しているか確認
+- 接続文字列の形式が正しいか確認
+
+#### Prismaエラーの場合
+```bash
+# Prismaクライアントの再生成
+npx prisma generate
+```
+
+### パフォーマンス最適化
+
+本番環境でのパフォーマンス向上のため：
+
+1. **データベース接続プール**: 適切な接続数の設定
+2. **CDN活用**: 静的ファイルの配信最適化
+3. **キャッシュ戦略**: API レスポンスのキャッシュ設定
+
 ---
 
 **工数管理システム開発チーム**
