@@ -57,6 +57,11 @@ man-hour-management/
 ├── admin/
 │   ├── default-data/    # デフォルトデータ作成
 │   └── init-data/       # 初期データ投入
+├── organizations/       # 組織管理API
+│   ├── companies/       # 会社管理API
+│   ├── divisions/       # 事業部管理API
+│   ├── departments/     # 部署管理API
+│   └── groups/          # グループ管理API
 ├── phases/              # 工程管理API
 ├── projects/            # プロジェクト管理API
 ├── tasks/               # タスク管理API
@@ -83,11 +88,15 @@ datasource db {
 ```
 
 ### 主要モデル
-1. **User**: ユーザー情報
+1. **User**: ユーザー情報・組織所属
 2. **Project**: プロジェクト情報
 3. **Phase**: 工程情報
 4. **Task**: タスク情報
 5. **TimeEntry**: 工数入力情報
+6. **Company**: 会社マスタ
+7. **Division**: 事業部マスタ
+8. **Department**: 部署マスタ
+9. **Group**: グループマスタ
 
 ### リレーション設計
 - User → Project (1:N, Manager関係)

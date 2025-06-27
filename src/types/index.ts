@@ -4,8 +4,63 @@ export interface User {
   email: string;
   password: string;
   role: 'ADMIN' | 'MANAGER' | 'MEMBER';
+  
+  // 組織情報
+  companyId?: string;
+  divisionId?: string;
+  departmentId?: string;
+  groupId?: string;
+  
+  // 組織オブジェクト（JOIN時）
+  company?: Company;
+  division?: Division;
+  department?: Department;
+  group?: Group;
+  
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Company {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Division {
+  id: string;
+  companyId: string;
+  code: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  company?: Company;
+}
+
+export interface Department {
+  id: string;
+  divisionId: string;
+  code: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  division?: Division;
+}
+
+export interface Group {
+  id: string;
+  departmentId: string;
+  code: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  department?: Department;
 }
 
 export interface Project {

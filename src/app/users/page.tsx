@@ -16,12 +16,23 @@ export default function UsersPage() {
     name: '',
     email: '',
     role: 'MEMBER' as User['role'],
-    password: ''
+    password: '',
+    companyId: '',
+    divisionId: '',
+    departmentId: '',
+    groupId: ''
+  });
+  const [organizations, setOrganizations] = useState({
+    companies: [],
+    divisions: [],
+    departments: [],
+    groups: []
   });
 
-  // ページ読み込み時にユーザー一覧を取得
+  // ページ読み込み時にユーザー一覧と組織データを取得
   useEffect(() => {
     fetchUsers();
+    fetchOrganizations();
   }, []);
 
   const fetchUsers = async () => {
@@ -39,12 +50,90 @@ export default function UsersPage() {
     }
   };
 
+  const fetchOrganizations = async () => {
+    try {
+      const response = await fetch('/api/organizations/companies');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setOrganizations(prev => ({ ...prev, companies: data.data }));
+        }
+      }
+    } catch (error) {
+      console.error('組織データ取得エラー:', error);
+    }
+  };
+
+  // 会社選択時に事業部を取得
+  const handleCompanyChange = async (companyId: string) => {
+    setFormData({ ...formData, companyId, divisionId: '', departmentId: '', groupId: '' });
+    if (companyId) {
+      try {
+        const response = await fetch(`/api/organizations/divisions?companyId=${companyId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setOrganizations(prev => ({ ...prev, divisions: data.data, departments: [], groups: [] }));
+          }
+        }
+      } catch (error) {
+        console.error('事業部データ取得エラー:', error);
+      }
+    } else {
+      setOrganizations(prev => ({ ...prev, divisions: [], departments: [], groups: [] }));
+    }
+  };
+
+  // 事業部選択時に部署を取得
+  const handleDivisionChange = async (divisionId: string) => {
+    setFormData({ ...formData, divisionId, departmentId: '', groupId: '' });
+    if (divisionId) {
+      try {
+        const response = await fetch(`/api/organizations/departments?divisionId=${divisionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setOrganizations(prev => ({ ...prev, departments: data.data, groups: [] }));
+          }
+        }
+      } catch (error) {
+        console.error('部署データ取得エラー:', error);
+      }
+    } else {
+      setOrganizations(prev => ({ ...prev, departments: [], groups: [] }));
+    }
+  };
+
+  // 部署選択時にグループを取得
+  const handleDepartmentChange = async (departmentId: string) => {
+    setFormData({ ...formData, departmentId, groupId: '' });
+    if (departmentId) {
+      try {
+        const response = await fetch(`/api/organizations/groups?departmentId=${departmentId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setOrganizations(prev => ({ ...prev, groups: data.data }));
+          }
+        }
+      } catch (error) {
+        console.error('グループデータ取得エラー:', error);
+      }
+    } else {
+      setOrganizations(prev => ({ ...prev, groups: [] }));
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
       email: '',
       role: 'MEMBER',
-      password: ''
+      password: '',
+      companyId: '',
+      divisionId: '',
+      departmentId: '',
+      groupId: ''
     });
     setEditingUser(null);
     setShowCreateForm(false);
@@ -131,7 +220,11 @@ export default function UsersPage() {
       name: user.name,
       email: user.email,
       role: user.role,
-      password: '' // 編集時はパスワードを空にする
+      password: '', // 編集時はパスワードを空にする
+      companyId: '',
+      divisionId: '',
+      departmentId: '',
+      groupId: ''
     });
     setShowCreateForm(true);
   };
@@ -412,6 +505,98 @@ export default function UsersPage() {
                           <span>パスワードを変更する場合のみ入力してください</span>
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* 組織選択セクション */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                      <span className="text-xl">🏢</span>
+                      <span>所属組織</span>
+                    </h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label htmlFor="company" className="form-label flex items-center space-x-2">
+                          <span className="text-lg">🏢</span>
+                          <span>会社</span>
+                        </label>
+                        <select
+                          id="company"
+                          value={formData.companyId}
+                          onChange={(e) => handleCompanyChange(e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="">会社を選択してください</option>
+                          {organizations.companies.map((company: any) => (
+                            <option key={company.id} value={company.id}>
+                              {company.name} ({company.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="division" className="form-label flex items-center space-x-2">
+                          <span className="text-lg">🏛️</span>
+                          <span>事業部</span>
+                        </label>
+                        <select
+                          id="division"
+                          value={formData.divisionId}
+                          onChange={(e) => handleDivisionChange(e.target.value)}
+                          className="form-select"
+                          disabled={!formData.companyId}
+                        >
+                          <option value="">事業部を選択してください</option>
+                          {organizations.divisions.map((division: any) => (
+                            <option key={division.id} value={division.id}>
+                              {division.name} ({division.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="department" className="form-label flex items-center space-x-2">
+                          <span className="text-lg">🏬</span>
+                          <span>部署</span>
+                        </label>
+                        <select
+                          id="department"
+                          value={formData.departmentId}
+                          onChange={(e) => handleDepartmentChange(e.target.value)}
+                          className="form-select"
+                          disabled={!formData.divisionId}
+                        >
+                          <option value="">部署を選択してください</option>
+                          {organizations.departments.map((department: any) => (
+                            <option key={department.id} value={department.id}>
+                              {department.name} ({department.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="group" className="form-label flex items-center space-x-2">
+                          <span className="text-lg">👥</span>
+                          <span>グループ</span>
+                        </label>
+                        <select
+                          id="group"
+                          value={formData.groupId}
+                          onChange={(e) => setFormData({...formData, groupId: e.target.value})}
+                          className="form-select"
+                          disabled={!formData.departmentId}
+                        >
+                          <option value="">グループを選択してください</option>
+                          {organizations.groups.map((group: any) => (
+                            <option key={group.id} value={group.id}>
+                              {group.name} ({group.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 

@@ -10,19 +10,42 @@ const JWT_SECRET = new TextEncoder().encode(
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { companyCode, email, password } = await request.json();
 
     // バリデーション
-    if (!email || !password) {
+    if (!companyCode || !email || !password) {
       return NextResponse.json(
-        { success: false, error: 'メールアドレスとパスワードは必須です' },
+        { success: false, error: '会社コード、メールアドレス、パスワードは必須です' },
         { status: 400 }
       );
     }
 
-    // データベースからユーザーを検索
+    // 会社コードから会社を検索
+    const company = await prisma.company.findUnique({
+      where: { code: companyCode }
+    });
+
+    if (!company) {
+      return NextResponse.json(
+        { success: false, error: '会社コードが正しくありません' },
+        { status: 401 }
+      );
+    }
+
+    // 会社内でユーザーを検索（組織情報も含めて取得）
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { 
+        companyId_email: {
+          companyId: company.id,
+          email: email
+        }
+      },
+      include: {
+        company: true,
+        division: true,
+        department: true,
+        group: true
+      }
     });
 
     console.log('データベースから取得したユーザー情報:', user);
@@ -46,11 +69,13 @@ export async function POST(request: NextRequest) {
     // パスワードを除外してユーザー情報を準備
     const { password: _, ...userWithoutPassword } = user;
 
-    // JWTトークンを作成（7日間有効）
+    // JWTトークンを作成（7日間有効）- 会社情報も含める
     const token = await new SignJWT({ 
       userId: user.id,
       email: user.email,
-      role: user.role 
+      role: user.role,
+      companyId: user.companyId,
+      companyCode: company.code
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
@@ -70,7 +95,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: userWithoutPassword,
-      message: 'ログインに成功しました'
+      message: `${company.name}にログインしました`
     });
   } catch (error) {
     console.error('ログインエラー:', error);

@@ -10,15 +10,100 @@ datasource db {
 model User {
   id              String      @id @default(cuid())
   name            String
-  email           String      @unique
+  email           String      // unique制約を削除（会社内で一意にするため）
   password        String
   role            Role        @default(MEMBER)
+  
+  // 組織情報（NULL許可で安全にマイグレーション）
+  companyId       String?     // 所属会社ID
+  divisionId      String?     // 所属事業部ID
+  departmentId    String?     // 所属部署ID
+  groupId         String?     // 所属グループID
+  
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  
+  // 組織リレーション
+  company         Company?    @relation(fields: [companyId], references: [id])
+  division        Division?   @relation(fields: [divisionId], references: [id])
+  department      Department? @relation(fields: [departmentId], references: [id])
+  group           Group?      @relation(fields: [groupId], references: [id])
+  
+  // 既存リレーション
   managedProjects Project[]   @relation("ProjectManager")
   timeEntries     TimeEntry[]
 
+  // 会社内でメールアドレスが一意になるよう複合一意制約
+  @@unique([companyId, email])
   @@map("users")
+}
+
+// 会社マスタ
+model Company {
+  id          String @id @default(cuid())
+  code        String @unique  // 会社コード（例: "00001"）
+  name        String          // 会社名
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  divisions   Division[]      // 事業部
+  users       User[]          // 所属ユーザー
+
+  @@map("companies")
+}
+
+// 事業部マスタ
+model Division {
+  id          String @id @default(cuid())
+  companyId   String
+  code        String          // 事業部コード（例: "SI", "CLOUD"）
+  name        String          // 事業部名
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  departments Department[]    // 部署
+  users       User[]          // 所属ユーザー
+  
+  @@unique([companyId, code]) // 会社内で事業部コードは一意
+  @@map("divisions")
+}
+
+// 部署マスタ
+model Department {
+  id          String @id @default(cuid())
+  divisionId  String
+  code        String          // 部署コード（例: "DIST", "FIN"）
+  name        String          // 部署名
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  division    Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  groups      Group[]         // グループ
+  users       User[]          // 所属ユーザー
+  
+  @@unique([divisionId, code]) // 事業部内で部署コードは一意
+  @@map("departments")
+}
+
+// グループマスタ
+model Group {
+  id           String @id @default(cuid())
+  departmentId String
+  code         String          // Grコード（例: "EC"）
+  name         String          // グループ名
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  users        User[]          // 所属ユーザー
+  
+  @@unique([departmentId, code]) // 部署内でGrコードは一意
+  @@map("groups")
 }
 
 model Project {

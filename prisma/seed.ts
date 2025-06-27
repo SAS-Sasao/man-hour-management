@@ -5,50 +5,190 @@ import { DEFAULT_PHASES, DEFAULT_TASKS } from '../src/utils/defaultData';
 const prisma = new PrismaClient();
 
 async function main() {
-  // 既存のユーザーをチェック
-  const existingUser = await prisma.user.findUnique({
-    where: { email: 'sasao@sas-com.com' }
+  console.log('🏢 組織マスタとユーザーデータの作成を開始します...');
+
+  // 1. 会社作成
+  const sasCompany = await prisma.company.upsert({
+    where: { code: '00001' },
+    update: {},
+    create: {
+      code: '00001',
+      name: 'SAS株式会社',
+      description: 'システム開発・クラウドサービス会社'
+    }
+  });
+  console.log(`✅ 会社作成: ${sasCompany.name} (${sasCompany.code})`);
+
+  // 2. SI事業部作成
+  const siDivision = await prisma.division.upsert({
+    where: { 
+      companyId_code: {
+        companyId: sasCompany.id,
+        code: 'SI'
+      }
+    },
+    update: {},
+    create: {
+      companyId: sasCompany.id,
+      code: 'SI',
+      name: 'SI事業部',
+      description: 'システムインテグレーション事業'
+    }
   });
 
-  if (!existingUser) {
-    // パスワードをハッシュ化（実際のアプリでパスワード認証を実装する場合）
-    const hashedPassword = await bcrypt.hash('ts05140952', 10);
+  // 3. クラウド事業部作成
+  const cloudDivision = await prisma.division.upsert({
+    where: { 
+      companyId_code: {
+        companyId: sasCompany.id,
+        code: 'CLOUD'
+      }
+    },
+    update: {},
+    create: {
+      companyId: sasCompany.id,
+      code: 'CLOUD',
+      name: 'クラウド事業部',
+      description: 'クラウドサービス事業'
+    }
+  });
 
-    // 初期ユーザー（笹尾 豊樹、管理者）を作成
-    const user = await prisma.user.create({
-      data: {
-        name: '笹尾 豊樹',
-        email: 'sasao@sas-com.com',
-        password: hashedPassword,
-        role: 'ADMIN', // 管理者権限
-      },
-    });
+  console.log(`✅ 事業部作成: ${siDivision.name}, ${cloudDivision.name}`);
 
-    console.log('初期ユーザーが作成されました:');
-    console.log(`- 名前: ${user.name}`);
-    console.log(`- メールアドレス: ${user.email}`);
-    console.log(`- 権限: ${user.role}`);
-    console.log(`- パスワード: ts05140952`);
-  } else {
-    console.log('笹尾 豊樹さんは既に登録されています');
-  }
+  // 4. SI事業部の部署作成
+  const distDepartment = await prisma.department.upsert({
+    where: {
+      divisionId_code: {
+        divisionId: siDivision.id,
+        code: 'DIST'
+      }
+    },
+    update: {},
+    create: {
+      divisionId: siDivision.id,
+      code: 'DIST',
+      name: '流通サービス部',
+      description: '流通・小売業向けシステム開発'
+    }
+  });
 
-  // サンプルプロジェクトを作成（存在しない場合のみ）
+  const finDepartment = await prisma.department.upsert({
+    where: {
+      divisionId_code: {
+        divisionId: siDivision.id,
+        code: 'FIN'
+      }
+    },
+    update: {},
+    create: {
+      divisionId: siDivision.id,
+      code: 'FIN',
+      name: '金融サービス部',
+      description: '金融業向けシステム開発'
+    }
+  });
+
+  const solDepartment = await prisma.department.upsert({
+    where: {
+      divisionId_code: {
+        divisionId: siDivision.id,
+        code: 'SOL'
+      }
+    },
+    update: {},
+    create: {
+      divisionId: siDivision.id,
+      code: 'SOL',
+      name: 'ソリューション開発部',
+      description: 'パッケージソリューション開発'
+    }
+  });
+
+  // 5. クラウド事業部の部署作成
+  const hrDepartment = await prisma.department.upsert({
+    where: {
+      divisionId_code: {
+        divisionId: cloudDivision.id,
+        code: 'HR'
+      }
+    },
+    update: {},
+    create: {
+      divisionId: cloudDivision.id,
+      code: 'HR',
+      name: 'HRサービス部',
+      description: '人事・労務管理サービス開発'
+    }
+  });
+
+  console.log(`✅ 部署作成: 流通サービス部, 金融サービス部, ソリューション開発部, HRサービス部`);
+
+  // 6. 通販サービスGr作成
+  const ecGroup = await prisma.group.upsert({
+    where: {
+      departmentId_code: {
+        departmentId: distDepartment.id,
+        code: 'EC'
+      }
+    },
+    update: {},
+    create: {
+      departmentId: distDepartment.id,
+      code: 'EC',
+      name: '通販サービスGr',
+      description: 'ECサイト・通販システム開発'
+    }
+  });
+
+  console.log(`✅ グループ作成: ${ecGroup.name}`);
+
+  // 7. 既存ユーザーの更新または作成
+  const hashedPassword = await bcrypt.hash('ts05140952', 10);
+  
+  const sasaoUser = await prisma.user.upsert({
+    where: { 
+      companyId_email: {
+        companyId: sasCompany.id,
+        email: 'sasao@sas-com.com'
+      }
+    },
+    update: {
+      companyId: sasCompany.id,
+      divisionId: siDivision.id,
+      departmentId: distDepartment.id,
+      groupId: ecGroup.id
+    },
+    create: {
+      name: '笹尾 豊樹',
+      email: 'sasao@sas-com.com',
+      password: hashedPassword,
+      role: 'ADMIN',
+      companyId: sasCompany.id,
+      divisionId: siDivision.id,
+      departmentId: distDepartment.id,
+      groupId: ecGroup.id
+    }
+  });
+
+  console.log(`✅ ユーザー作成/更新: ${sasaoUser.name}`);
+  console.log(`📋 ログイン情報:`);
+  console.log(`   会社コード: ${sasCompany.code}`);
+  console.log(`   メールアドレス: ${sasaoUser.email}`);
+  console.log(`   パスワード: ts05140952`);
+  console.log(`   所属: ${sasCompany.name} > ${siDivision.name} > ${distDepartment.name} > ${ecGroup.name}`);
+
+  // 8. サンプルプロジェクトを作成（存在しない場合のみ）
   const existingProject = await prisma.project.findFirst({
     where: { name: 'サンプルプロジェクト' }
   });
 
   if (!existingProject) {
-    const user = await prisma.user.findUnique({
-      where: { email: 'sasao@sas-com.com' }
-    });
-
     const project = await prisma.project.create({
       data: {
         name: 'サンプルプロジェクト',
         description: 'デフォルトの工程とタスクを含むサンプルプロジェクト',
         startDate: new Date(),
-        managerId: user?.id,
+        managerId: sasaoUser.id,
         status: 'ACTIVE'
       }
     });
@@ -85,15 +225,17 @@ async function main() {
       }
     }
 
-    console.log('サンプルプロジェクトとデフォルトの工程・タスクが作成されました');
+    console.log('✅ サンプルプロジェクトとデフォルトの工程・タスクが作成されました');
   } else {
-    console.log('サンプルプロジェクトは既に存在します');
+    console.log('ℹ️ サンプルプロジェクトは既に存在します');
   }
+
+  console.log('🎉 組織マスタとユーザーデータの作成が完了しました！');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ エラーが発生しました:', e);
     process.exit(1);
   })
   .finally(async () => {

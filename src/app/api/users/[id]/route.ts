@@ -44,7 +44,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, email, password, role } = body;
+    const { name, email, password, role, companyId, divisionId, departmentId, groupId } = body;
 
     // 既存ユーザーの確認
     const existingUser = await prisma.user.findUnique({
@@ -76,18 +76,18 @@ export async function PUT(
     }
 
     // 更新データの準備
-    const updateData: {
-      name: string;
-      email: string;
-      role: 'ADMIN' | 'MANAGER' | 'MEMBER';
-      updatedAt: Date;
-      password?: string;
-    } = {
+    const updateData: any = {
       name,
       email,
       role: role as 'ADMIN' | 'MANAGER' | 'MEMBER',
       updatedAt: new Date(),
     };
+
+    // 組織情報の更新
+    if (companyId !== undefined) updateData.companyId = companyId || null;
+    if (divisionId !== undefined) updateData.divisionId = divisionId || null;
+    if (departmentId !== undefined) updateData.departmentId = departmentId || null;
+    if (groupId !== undefined) updateData.groupId = groupId || null;
 
     // パスワードが提供されている場合のみハッシュ化して更新
     if (password && password.trim() !== '') {
@@ -108,6 +108,10 @@ export async function PUT(
         name: true,
         email: true,
         role: true,
+        companyId: true,
+        divisionId: true,
+        departmentId: true,
+        groupId: true,
         createdAt: true,
         updatedAt: true,
       },

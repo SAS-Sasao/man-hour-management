@@ -40,6 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: '工数入力', href: '/time-entry', icon: '⏰' },
     { name: 'レポート', href: '/reports', icon: '📈' },
     ...(state.currentUser?.role === 'ADMIN' ? [
+      { name: '組織管理', href: '/organizations', icon: '🏢' },
       { name: 'ユーザー管理', href: '/users', icon: '👥' }
     ] : []),
   ];

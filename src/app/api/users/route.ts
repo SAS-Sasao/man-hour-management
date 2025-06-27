@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, password, role } = body;
+    const { name, email, password, role, companyId, divisionId, departmentId, groupId } = body;
 
     // バリデーション
     if (!name || !email || !password || !role) {
@@ -67,18 +67,31 @@ export async function POST(request: Request) {
     // パスワードをハッシュ化
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // ユーザーデータの準備
+    const userData: any = {
+      name,
+      email,
+      password: hashedPassword,
+      role,
+    };
+
+    // 組織情報が指定されている場合は追加
+    if (companyId) userData.companyId = companyId;
+    if (divisionId) userData.divisionId = divisionId;
+    if (departmentId) userData.departmentId = departmentId;
+    if (groupId) userData.groupId = groupId;
+
     const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role,
-      },
+      data: userData,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        companyId: true,
+        divisionId: true,
+        departmentId: true,
+        groupId: true,
         createdAt: true,
         updatedAt: true,
       },

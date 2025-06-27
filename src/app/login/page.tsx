@@ -5,6 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const [companyCode, setCompanyCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,13 +19,13 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 直接データベースからユーザーを検索
+      // 会社コード、メールアドレス、パスワードでログイン
       const response = await fetch('/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ companyCode, email, password }),
       });
       
       const responseData = await response.json();
@@ -105,6 +106,28 @@ export default function LoginPage() {
 
           {/* ログインフォーム */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="companyCode" className="form-label flex items-center space-x-2">
+                <span className="text-lg">🏢</span>
+                <span>会社コード</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="companyCode"
+                  value={companyCode}
+                  onChange={(e) => setCompanyCode(e.target.value)}
+                  className="form-input pl-6"
+                  placeholder="00001"
+                  required
+                  disabled={isLoading}
+                />
+                <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
+                  <span className="text-gray-400 text-xs">🏢</span>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <label htmlFor="email" className="form-label flex items-center space-x-2">
                 <span className="text-lg">📧</span>
