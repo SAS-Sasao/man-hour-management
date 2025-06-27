@@ -3,10 +3,12 @@
 import { useApp } from '../contexts/AppContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { state, dispatch } = useApp();
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -33,6 +35,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       window.location.href = '/login';
     }
   };
+
+  // モバイルメニューを閉じる
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  // ナビゲーションリンククリック時にモバイルメニューを閉じる
+  const handleNavClick = () => {
+    closeMobileMenu();
+  };
+
+  // ESCキーでモバイルメニューを閉じる
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeMobileMenu();
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // スクロールを無効化
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   const navigation = [
     { name: 'ダッシュボード', href: '/dashboard', icon: '📊' },
@@ -104,6 +138,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
+                {/* ハンバーガーメニューボタン（モバイルのみ） */}
+                <button
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="md:hidden mr-3 p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all duration-200"
+                  aria-label="メニューを開く"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                
                 <div className="flex items-center space-x-3">
                   <div className="text-2xl">⏱️</div>
                   <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -111,7 +156,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </h1>
                 </div>
               </div>
-              <div className="hidden sm:ml-8 sm:flex sm:space-x-2">
+              
+              {/* デスクトップナビゲーション */}
+              <div className="hidden md:ml-8 md:flex md:space-x-2">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
@@ -128,6 +175,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </div>
             </div>
+            
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -143,14 +191,104 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
               <button
                 onClick={handleLogout}
-                className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-xl text-sm hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-lg"
+                className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-2 md:px-4 rounded-xl text-sm hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-lg"
               >
-                ログアウト
+                <span className="hidden sm:inline">ログアウト</span>
+                <span className="sm:hidden">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </span>
               </button>
             </div>
           </div>
         </div>
       </nav>
+
+      {/* モバイルサイドバーオーバーレイ */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* 背景オーバーレイ */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+            onClick={closeMobileMenu}
+          />
+          
+          {/* サイドバー */}
+          <div className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out">
+            <div className="flex flex-col h-full">
+              {/* サイドバーヘッダー */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">⏱️</div>
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    工数管理
+                  </h2>
+                </div>
+                <button
+                  onClick={closeMobileMenu}
+                  className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 transition-all duration-200"
+                  aria-label="メニューを閉じる"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* ユーザー情報 */}
+              <div className="p-6 border-b border-gray-200/50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                    {state.currentUser?.name?.charAt(0) || '?'}
+                  </div>
+                  <div>
+                    <div className="text-base font-medium text-gray-900">{state.currentUser?.name || 'ユーザー'}</div>
+                    <div className="text-sm text-gray-500">
+                      {state.currentUser?.role === 'ADMIN' ? '管理者' :
+                       state.currentUser?.role === 'MANAGER' ? 'マネージャー' : 'メンバー'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ナビゲーションメニュー */}
+              <div className="flex-1 py-6">
+                <nav className="space-y-2 px-4">
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={handleNavClick}
+                      className={`${
+                        pathname === item.href
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100/50 hover:text-gray-900'
+                      } group flex items-center px-4 py-3 text-base font-medium rounded-xl transition-all duration-200`}
+                    >
+                      <span className="text-xl mr-4">{item.icon}</span>
+                      <span>{item.name}</span>
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+
+              {/* ログアウトボタン */}
+              <div className="p-6 border-t border-gray-200/50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-3 rounded-xl text-base font-medium hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>ログアウト</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
