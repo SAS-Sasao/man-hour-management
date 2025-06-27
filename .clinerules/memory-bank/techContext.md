@@ -250,21 +250,41 @@ const eslintConfig = [
 export default eslintConfig;
 ```
 
-## デプロイメント考慮事項
+## デプロイメント（本番環境稼働中）
 
-### 本番環境要件
-- Node.js 実行環境
-- PostgreSQL データベース
-- 環境変数の適切な設定
+### ✅ 本番環境構成（Vercel + Neon PostgreSQL）
+- **プラットフォーム**: Vercel（Edge Network活用）
+- **データベース**: Neon PostgreSQL（本番用）
+- **SSL/CDN**: 自動設定済み
+- **ドメイン**: Vercelが提供するドメイン
+- **スケーリング**: 自動スケーリング対応
 
-### ビルドプロセス
-1. `npm run build` - Next.js アプリケーションビルド
-2. `npx prisma generate` - Prisma クライアント生成
-3. `npx prisma migrate deploy` - 本番マイグレーション実行
+### ✅ 本番環境設定（vercel.json）
+```json
+{
+  "buildCommand": "prisma generate && next build",
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "PRISMA_GENERATE_SKIP_AUTOINSTALL": "true"
+  }
+}
+```
 
-### 環境変数
-- `DATABASE_URL`: PostgreSQL接続文字列
-- `NODE_ENV`: 実行環境（production/development）
+### ✅ 本番ビルドプロセス（自動化済み）
+1. `prisma generate` - Prisma クライアント生成
+2. `next build` - Next.js アプリケーションビルド
+3. 自動デプロイ - Vercelによる自動デプロイ
+4. `npx prisma migrate deploy` - 本番マイグレーション実行（手動）
+
+### ✅ 本番環境変数
+- `DATABASE_URL`: Neon PostgreSQL接続文字列（SSL必須）
+- `JWT_SECRET`: 本番用JWT秘密鍵
+- `NODE_ENV`: production
+- `PRISMA_GENERATE_SKIP_AUTOINSTALL`: true
 
 ## トラブルシューティング
 
@@ -286,19 +306,34 @@ export default eslintConfig;
 - **Next.js DevTools**: ブラウザ開発者ツール
 - **データベース確認スクリプト**: `check-db.js`
 
-## 今後の技術的改善点
+## 本番環境運用・改善点
 
-### パフォーマンス最適化
-- React Query/SWR導入検討
-- 画像最適化
-- バンドルサイズ最適化
+### 🚨 本番環境監視（最優先）
+- **エラー監視**: Sentry等の導入
+- **パフォーマンス監視**: Vercel Analytics活用
+- **アクセスログ**: 分析・アラート設定
+- **データベース監視**: Neon Console活用
 
-### 開発体験向上
-- Storybook導入
-- テスト環境構築（Jest/Testing Library）
-- CI/CD パイプライン構築
+### パフォーマンス最適化（本番環境対応）
+- **Vercel Edge Network**: 最適化済み
+- **データベースクエリ**: Neon PostgreSQL最適化
+- **React最適化**: useMemo/useCallback活用
+- **バンドルサイズ**: Next.js最適化
 
-### セキュリティ強化
-- JWT認証への移行検討
-- CSRF対策
-- セキュリティヘッダー設定
+### 本番環境セキュリティ強化
+- **SSL/TLS**: Vercel自動設定済み
+- **セキュリティヘッダー**: 設定が必要
+- **環境変数管理**: Vercel Dashboard管理
+- **データベースセキュリティ**: Neon SSL接続
+
+### 開発体験向上（本番環境対応）
+- **CI/CD パイプライン**: GitHub Actions + Vercel
+- **テスト環境構築**: Jest/Testing Library
+- **本番環境テスト**: E2Eテスト環境
+- **監視ダッシュボード**: 運用監視体制
+
+### 本番環境制約・考慮事項
+- **Vercel Function制限**: 最大30秒実行時間
+- **Neon PostgreSQL**: 接続数制限あり
+- **Edge Network**: 地理的分散配信
+- **自動スケーリング**: トラフィック増加対応
