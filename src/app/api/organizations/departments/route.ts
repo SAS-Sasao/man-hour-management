@@ -30,10 +30,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      data: departments
-    });
+    return NextResponse.json(departments);
   } catch (error) {
     console.error('部署一覧取得エラー:', error);
     return NextResponse.json(

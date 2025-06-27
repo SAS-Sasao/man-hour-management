@@ -15,16 +15,69 @@ export async function GET() {
               }
             }
           }
-        },
-        _count: {
-          select: { users: true }
         }
       }
     });
 
+    // 各組織の人数を手動でカウント
+    const companiesWithCounts = await Promise.all(
+      companies.map(async (company: any) => {
+        const companyUserCount = await prisma.user.count({
+          where: { companyId: company.id }
+        });
+
+        const divisionsWithCounts = await Promise.all(
+          company.divisions.map(async (division: any) => {
+            const divisionUserCount = await prisma.user.count({
+              where: { divisionId: division.id }
+            });
+
+            const departmentsWithCounts = await Promise.all(
+              division.departments.map(async (department: any) => {
+                const departmentUserCount = await prisma.user.count({
+                  where: { departmentId: department.id }
+                });
+
+                const groupsWithCounts = await Promise.all(
+                  department.groups.map(async (group: any) => {
+                    const groupUserCount = await prisma.user.count({
+                      where: { groupId: group.id }
+                    });
+
+                    return {
+                      ...group,
+                      _count: { users: groupUserCount }
+                    };
+                  })
+                );
+
+                return {
+                  ...department,
+                  groups: groupsWithCounts,
+                  _count: { users: departmentUserCount }
+                };
+              })
+            );
+
+            return {
+              ...division,
+              departments: departmentsWithCounts,
+              _count: { users: divisionUserCount }
+            };
+          })
+        );
+
+        return {
+          ...company,
+          divisions: divisionsWithCounts,
+          _count: { users: companyUserCount }
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: companies
+      data: companiesWithCounts
     });
   } catch (error) {
     console.error('会社一覧取得エラー:', error);

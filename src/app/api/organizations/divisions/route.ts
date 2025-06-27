@@ -7,15 +7,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const companyId = searchParams.get('companyId');
 
-    if (!companyId) {
-      return NextResponse.json(
-        { success: false, error: '会社IDは必須です' },
-        { status: 400 }
-      );
-    }
+    const whereCondition = companyId ? { companyId } : {};
 
     const divisions = await prisma.division.findMany({
-      where: { companyId },
+      where: whereCondition,
       orderBy: { code: 'asc' },
       include: {
         company: true,
@@ -30,10 +25,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      data: divisions
-    });
+    return NextResponse.json(divisions);
   } catch (error) {
     console.error('事業部一覧取得エラー:', error);
     return NextResponse.json(

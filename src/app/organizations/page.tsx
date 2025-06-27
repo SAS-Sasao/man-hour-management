@@ -72,7 +72,7 @@ export default function OrganizationsPage() {
       setLoading(true);
       const response = await fetch('/api/organizations/companies');
       const data = await response.json();
-
+      
       if (data.success) {
         setCompanies(data.data);
       } else {
