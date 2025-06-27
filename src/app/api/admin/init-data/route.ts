@@ -24,9 +24,74 @@ const DEFAULT_TASKS = [
 
 export async function POST() {
   try {
-    // 既存のユーザーをチェック
+    // 組織データを作成
+    let company = await prisma.company.findFirst({
+      where: { name: 'SAS株式会社' }
+    });
+
+    if (!company) {
+      company = await prisma.company.create({
+        data: {
+          name: 'SAS株式会社',
+          code: 'SAS001'
+        }
+      });
+      console.log('会社が作成されました:', company.name);
+    }
+
+    let division = await prisma.division.findFirst({
+      where: { name: 'システム開発事業部', companyId: company.id }
+    });
+
+    if (!division) {
+      division = await prisma.division.create({
+        data: {
+          name: 'システム開発事業部',
+          code: 'SYS001',
+          companyId: company.id
+        }
+      });
+      console.log('事業部が作成されました:', division.name);
+    }
+
+    let department = await prisma.department.findFirst({
+      where: { name: '開発部', divisionId: division.id }
+    });
+
+    if (!department) {
+      department = await prisma.department.create({
+        data: {
+          name: '開発部',
+          code: 'DEV001',
+          divisionId: division.id
+        }
+      });
+      console.log('部署が作成されました:', department.name);
+    }
+
+    let group = await prisma.group.findFirst({
+      where: { name: 'Webアプリケーション開発グループ', departmentId: department.id }
+    });
+
+    if (!group) {
+      group = await prisma.group.create({
+        data: {
+          name: 'Webアプリケーション開発グループ',
+          code: 'WEB001',
+          departmentId: department.id
+        }
+      });
+      console.log('グループが作成されました:', group.name);
+    }
+
+    // 既存のユーザーをチェック（companyIdとemailの組み合わせで）
     let user = await prisma.user.findUnique({
-      where: { email: 'sasao@sas-com.com' }
+      where: { 
+        companyId_email: {
+          companyId: company.id,
+          email: 'sasao@sas-com.com'
+        }
+      }
     });
 
     if (!user) {
@@ -40,6 +105,10 @@ export async function POST() {
           email: 'sasao@sas-com.com',
           password: hashedPassword,
           role: 'ADMIN',
+          companyId: company.id,
+          divisionId: division.id,
+          departmentId: department.id,
+          groupId: group.id,
         },
       });
 
