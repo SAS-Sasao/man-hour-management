@@ -85,12 +85,10 @@ export async function POST() {
     }
 
     // 既存のユーザーをチェック（companyIdとemailの組み合わせで）
-    let user = await prisma.user.findUnique({
+    let user = await prisma.user.findFirst({
       where: { 
-        companyId_email: {
-          companyId: company.id,
-          email: 'sasao@sas-com.com'
-        }
+        companyId: company.id,
+        email: 'sasao@sas-com.com'
       }
     });
 

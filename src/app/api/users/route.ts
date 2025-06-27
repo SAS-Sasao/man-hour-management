@@ -53,13 +53,20 @@ export async function POST(request: Request) {
     }
 
     // メールアドレスの重複チェック
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const existingUsers = await prisma.user.findMany({
+      where: { 
+        email,
+        ...(companyId && { companyId })
+      },
     });
 
-    if (existingUser) {
+    if (existingUsers.length > 0) {
+      const errorMessage = companyId 
+        ? 'この会社でこのメールアドレスは既に使用されています'
+        : 'このメールアドレスは既に使用されています';
+      
       return NextResponse.json(
-        { error: 'このメールアドレスは既に使用されています' },
+        { error: errorMessage },
         { status: 400 }
       );
     }
@@ -83,21 +90,12 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.create({
       data: userData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        companyId: true,
-        divisionId: true,
-        departmentId: true,
-        groupId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
 
-    return NextResponse.json(user);
+    // パスワードを除外してレスポンス
+    const { password: _, ...userWithoutPassword } = user;
+
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('ユーザー作成エラー:', error);
     return NextResponse.json(
