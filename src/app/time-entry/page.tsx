@@ -6,7 +6,15 @@ import Calendar from '../../components/Calendar';
 import BulkTimeEntryModal from '../../components/BulkTimeEntryModal';
 import { useApp } from '../../contexts/AppContext';
 import { TimeEntry } from '../../types';
-import { formatPersonDays } from '../../utils/calculations';
+import { 
+  formatPersonDays, 
+  formatPersonMonths, 
+  formatHoursAndPersonMonths,
+  getExpectedHoursForMonth,
+  calculateMonthlyProgress,
+  formatBusinessDaysAndPersonMonths
+} from '../../utils/calculations';
+import { getBusinessDaysInMonth } from '../../utils/holidays';
 
 export default function TimeEntryPage() {
   const { state, dispatch } = useApp();
@@ -87,10 +95,18 @@ export default function TimeEntryPage() {
       entry.date <= endOfMonth
     );
 
+    const totalHours = monthEntries.reduce((sum, entry) => sum + entry.hours, 0);
+    const businessDays = getBusinessDaysInMonth(selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+    const expectedHours = getExpectedHoursForMonth(selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+    const progress = calculateMonthlyProgress(totalHours, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+
     return {
-      totalHours: monthEntries.reduce((sum, entry) => sum + entry.hours, 0),
+      totalHours,
       daysWorked: new Set(monthEntries.map(entry => entry.date.toDateString())).size,
-      projectCount: new Set(monthEntries.map(entry => entry.projectId)).size
+      projectCount: new Set(monthEntries.map(entry => entry.projectId)).size,
+      businessDays,
+      expectedHours,
+      progress
     };
   })();
 
@@ -393,6 +409,40 @@ export default function TimeEntryPage() {
                       <span>プロジェクト数</span>
                     </span>
                     <span className="font-bold text-gray-900">{monthlyStats.projectCount}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 glass rounded-xl">
+                    <span className="text-gray-600 flex items-center space-x-2">
+                      <span>🏢</span>
+                      <span>営業日数</span>
+                    </span>
+                    <div className="text-right">
+                      <div className="font-bold text-gray-900">{monthlyStats.businessDays}日</div>
+                      <div className="text-xs text-gray-500">{formatPersonMonths(monthlyStats.expectedHours / 7.5 / 20)}</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center p-3 glass rounded-xl">
+                    <span className="text-gray-600 flex items-center space-x-2">
+                      <span>📈</span>
+                      <span>進捗率</span>
+                    </span>
+                    <div className="text-right">
+                      <div className="font-bold text-gray-900">{monthlyStats.progress.toFixed(1)}%</div>
+                      <div className="text-xs text-gray-500">
+                        {monthlyStats.totalHours.toFixed(1)}h / {monthlyStats.expectedHours.toFixed(1)}h
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center p-3 glass rounded-xl">
+                    <span className="text-gray-600 flex items-center space-x-2">
+                      <span>👤</span>
+                      <span>人月換算</span>
+                    </span>
+                    <div className="text-right">
+                      <div className="font-bold text-gray-900">{formatHoursAndPersonMonths(monthlyStats.totalHours)}</div>
+                      <div className="text-xs text-gray-500">
+                        想定: {formatPersonMonths(monthlyStats.expectedHours / 7.5 / 20)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

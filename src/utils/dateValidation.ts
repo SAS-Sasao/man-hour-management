@@ -1,7 +1,13 @@
+import { isBusinessDay } from './holidays';
+
 export function isValidWorkDate(date: Date): boolean {
   const today = new Date();
   today.setHours(23, 59, 59, 999); // 今日の終わりまで許可
   return date <= today;
+}
+
+export function isValidBusinessDate(date: Date): boolean {
+  return isValidWorkDate(date) && isBusinessDay(date);
 }
 
 export function getMaxDateString(): string {

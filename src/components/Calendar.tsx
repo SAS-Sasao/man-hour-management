@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { TimeEntry } from '../types';
 import { isValidWorkDate } from '../utils/dateValidation';
+import { isHoliday, getHolidayName, isBusinessDay } from '../utils/holidays';
 
 interface CalendarProps {
   selectedDate: Date;
@@ -118,14 +119,19 @@ export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick 
           const isSelected = selectedDate.toDateString() === date.toDateString();
           const isToday = new Date().toDateString() === date.toDateString();
           const dayOfWeek = index % 7;
+          const isHolidayDate = isHoliday(date);
+          const holidayName = getHolidayName(date);
+          const isBusinessDayDate = isBusinessDay(date);
           
           return (
             <div
               key={date.toISOString()}
-              className={`min-h-[120px] p-2 border-r border-b border-gray-100 transition-all duration-200 ${
+              className={`min-h-[120px] p-2 border-r border-b border-gray-100 transition-all duration-200 relative ${
                 !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'
               } ${isSelected ? 'bg-blue-100 ring-2 ring-blue-500' : ''} ${
                 isToday ? 'bg-yellow-50' : ''
+              } ${
+                isHolidayDate && isCurrentMonth ? 'bg-red-50' : ''
               } ${
                 isValidWorkDate(date) && isCurrentMonth 
                   ? 'cursor-pointer hover:bg-blue-50' 
@@ -136,18 +142,34 @@ export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick 
                   onDateSelect(date);
                 } else if (!isValidWorkDate(date)) {
                   alert('未来の日付は選択できません');
+                } else if (isHolidayDate) {
+                  alert(`${holidayName}は祝日です`);
                 }
               }}
+              title={holidayName || undefined}
             >
               <div className="flex justify-between items-start mb-2">
-                <span className={`text-sm font-medium ${
-                  !isCurrentMonth ? 'text-gray-400' : 
-                  dayOfWeek === 0 ? 'text-red-600' : 
-                  dayOfWeek === 6 ? 'text-blue-600' : 
-                  'text-gray-800'
-                } ${isToday ? 'bg-yellow-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs' : ''}`}>
-                  {date.getDate()}
-                </span>
+                <div className="flex flex-col items-start">
+                  <span className={`text-sm font-medium ${
+                    !isCurrentMonth ? 'text-gray-400' : 
+                    isHolidayDate ? 'text-red-600' :
+                    dayOfWeek === 0 ? 'text-red-600' : 
+                    dayOfWeek === 6 ? 'text-blue-600' : 
+                    'text-gray-800'
+                  } ${isToday ? 'bg-yellow-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs' : ''}`}>
+                    {date.getDate()}
+                  </span>
+                  {isHolidayDate && isCurrentMonth && (
+                    <span className="text-xs text-red-600 font-medium mt-1 truncate max-w-[60px]" title={holidayName || ''}>
+                      🎌 {holidayName}
+                    </span>
+                  )}
+                  {!isBusinessDayDate && !isHolidayDate && isCurrentMonth && (dayOfWeek === 0 || dayOfWeek === 6) && (
+                    <span className="text-xs text-gray-500 font-medium mt-1">
+                      {dayOfWeek === 0 ? '🌅 日曜' : '🌆 土曜'}
+                    </span>
+                  )}
+                </div>
                 {totalHours > 0 && (
                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
                     {totalHours}h
