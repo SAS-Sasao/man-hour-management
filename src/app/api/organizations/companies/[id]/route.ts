@@ -5,12 +5,13 @@ import { getCurrentUser, canEditCompany } from '../../../../../utils/auth';
 // 会社更新
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // 開発環境では認証をバイパス
     const user = await getCurrentUser(request);
-    const companyId = params.id;
+    const companyId = id;
 
     // 認証がある場合のみ権限チェック
     if (user && !canEditCompany(user, companyId)) {
@@ -68,8 +69,9 @@ export async function PUT(
 // 会社削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // 開発環境では認証をバイパス
     const user = await getCurrentUser(request);
@@ -82,7 +84,7 @@ export async function DELETE(
       );
     }
 
-    const companyId = params.id;
+    const companyId = id;
 
     // 会社の存在確認
     const existingCompany = await prisma.company.findUnique({
@@ -161,12 +163,13 @@ export async function DELETE(
 // 会社詳細取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // 開発環境では認証をバイパス
     const user = await getCurrentUser(request);
-    const companyId = params.id;
+    const companyId = id;
 
     // 認証がある場合のみアクセス権限チェック
     if (user && user.role !== 'ADMIN' && user.companyId !== companyId) {

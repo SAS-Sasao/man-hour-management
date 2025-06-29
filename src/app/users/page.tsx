@@ -162,6 +162,10 @@ export default function UsersPage() {
           name: formData.name,
           email: formData.email,
           role: formData.role,
+          companyId: formData.companyId,
+          divisionId: formData.divisionId,
+          departmentId: formData.departmentId,
+          groupId: formData.groupId,
         };
 
         // パスワードが入力されている場合のみ含める
@@ -214,18 +218,69 @@ export default function UsersPage() {
     }
   };
 
-  const handleEdit = (user: User) => {
+  const handleEdit = async (user: User) => {
     setEditingUser(user);
-    setFormData({
+    
+    // ユーザーの組織情報を設定
+    const userData = {
       name: user.name,
       email: user.email,
       role: user.role,
       password: '', // 編集時はパスワードを空にする
-      companyId: '',
-      divisionId: '',
-      departmentId: '',
-      groupId: ''
-    });
+      companyId: user.companyId || '',
+      divisionId: user.divisionId || '',
+      departmentId: user.departmentId || '',
+      groupId: user.groupId || ''
+    };
+    
+    setFormData(userData);
+    
+    // 組織データを段階的に取得
+    if (userData.companyId) {
+      // 事業部を取得
+      try {
+        const response = await fetch(`/api/organizations/divisions?companyId=${userData.companyId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setOrganizations(prev => ({ ...prev, divisions: data.data }));
+          }
+        }
+      } catch (error) {
+        console.error('事業部データ取得エラー:', error);
+      }
+      
+      if (userData.divisionId) {
+        // 部署を取得
+        try {
+          const response = await fetch(`/api/organizations/departments?divisionId=${userData.divisionId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setOrganizations(prev => ({ ...prev, departments: data.data }));
+            }
+          }
+        } catch (error) {
+          console.error('部署データ取得エラー:', error);
+        }
+        
+        if (userData.departmentId) {
+          // グループを取得
+          try {
+            const response = await fetch(`/api/organizations/groups?departmentId=${userData.departmentId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                setOrganizations(prev => ({ ...prev, groups: data.data }));
+              }
+            }
+          } catch (error) {
+            console.error('グループデータ取得エラー:', error);
+          }
+        }
+      }
+    }
+    
     setShowCreateForm(true);
   };
 

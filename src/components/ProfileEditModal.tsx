@@ -63,8 +63,9 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       // 全ての事業部を取得（会社IDに関係なく）
       const divisionsResponse = await fetch('/api/organizations/divisions');
       if (divisionsResponse.ok) {
-        const divisionsData = await divisionsResponse.json();
-        console.log('取得した事業部データ:', divisionsData);
+        const divisionsResult = await divisionsResponse.json();
+        console.log('取得した事業部データ:', divisionsResult);
+        const divisionsData = divisionsResult.success ? divisionsResult.data : divisionsResult;
         setDivisions(Array.isArray(divisionsData) ? divisionsData : []);
       } else {
         console.error('事業部データの取得に失敗:', divisionsResponse.status);
@@ -74,7 +75,8 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       if (state.currentUser?.divisionId) {
         const departmentsResponse = await fetch(`/api/organizations/departments?divisionId=${state.currentUser.divisionId}`);
         if (departmentsResponse.ok) {
-          const departmentsData = await departmentsResponse.json();
+          const departmentsResult = await departmentsResponse.json();
+          const departmentsData = departmentsResult.success ? departmentsResult.data : departmentsResult;
           setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
         }
       }
@@ -83,7 +85,8 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       if (state.currentUser?.departmentId) {
         const groupsResponse = await fetch(`/api/organizations/groups?departmentId=${state.currentUser.departmentId}`);
         if (groupsResponse.ok) {
-          const groupsData = await groupsResponse.json();
+          const groupsResult = await groupsResponse.json();
+          const groupsData = groupsResult.success ? groupsResult.data : groupsResult;
           setGroups(Array.isArray(groupsData) ? groupsData : []);
         }
       }
@@ -108,7 +111,8 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       try {
         const response = await fetch(`/api/organizations/departments?divisionId=${divisionId}`);
         if (response.ok) {
-          const data = await response.json();
+          const result = await response.json();
+          const data = result.success ? result.data : result;
           setDepartments(Array.isArray(data) ? data : []);
         }
       } catch (error) {
@@ -133,7 +137,8 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       try {
         const response = await fetch(`/api/organizations/groups?departmentId=${departmentId}`);
         if (response.ok) {
-          const data = await response.json();
+          const result = await response.json();
+          const data = result.success ? result.data : result;
           setGroups(Array.isArray(data) ? data : []);
         }
       } catch (error) {

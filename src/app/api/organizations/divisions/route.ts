@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(divisions);
+    return NextResponse.json({
+      success: true,
+      data: divisions
+    });
   } catch (error) {
     console.error('事業部一覧取得エラー:', error);
     return NextResponse.json(

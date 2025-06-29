@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(groups);
+    return NextResponse.json({
+      success: true,
+      data: groups
+    });
   } catch (error) {
     console.error('グループ一覧取得エラー:', error);
     return NextResponse.json(
