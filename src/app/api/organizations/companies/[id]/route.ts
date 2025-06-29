@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../../../lib/prisma';
 import { getCurrentUser, canEditCompany } from '../../../../../utils/auth';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 // 会社更新
 export async function PUT(
@@ -48,7 +49,8 @@ export async function PUT(
       where: { id: companyId },
       data: {
         name,
-        description
+        description,
+        updatedAt: createJSTTimestamp(),
       }
     });
 

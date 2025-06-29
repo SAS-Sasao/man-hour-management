@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import { GanttTask, WBSProgressReport, AssigneeWorkloadReport, WBSEntry } from '@/types';
+import { parseJSTDate, createJSTTimestamp } from '@/utils/timezone';
 
 // WBSデータの取得
 export async function GET(request: NextRequest) {
@@ -50,8 +51,8 @@ async function getGanttTasks(
   
   // 日付範囲でのフィルタリング
   if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseJSTDate(startDate);
+    const end = parseJSTDate(endDate);
     
     dateFilter.OR = [
       {
@@ -327,14 +328,14 @@ async function getWorkloadReport(startDate?: string | null, endDate?: string | n
     dateFilter.OR = [
       {
         plannedStartDate: {
-          gte: new Date(startDate),
-          lte: new Date(endDate)
+          gte: parseJSTDate(startDate),
+          lte: parseJSTDate(endDate)
         }
       },
       {
         plannedEndDate: {
-          gte: new Date(startDate),
-          lte: new Date(endDate)
+          gte: parseJSTDate(startDate),
+          lte: parseJSTDate(endDate)
         }
       }
     ];
@@ -500,13 +501,15 @@ export async function POST(request: NextRequest) {
             projectId: projectId || null,
             phaseId: phaseId || null,
             assigneeId: assigneeId || null,
-            plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : null,
-            plannedEndDate: plannedEndDate ? new Date(plannedEndDate) : null,
+            plannedStartDate: plannedStartDate ? parseJSTDate(plannedStartDate) : null,
+            plannedEndDate: plannedEndDate ? parseJSTDate(plannedEndDate) : null,
             estimatedHours: estimatedHours || 0,
-            actualStartDate: actualStartDate ? new Date(actualStartDate) : null,
-            actualEndDate: actualEndDate ? new Date(actualEndDate) : null,
+            actualStartDate: actualStartDate ? parseJSTDate(actualStartDate) : null,
+            actualEndDate: actualEndDate ? parseJSTDate(actualEndDate) : null,
             actualHours: actualHours || 0,
             status: status || 'NOT_STARTED',
+            createdAt: createJSTTimestamp(),
+            updatedAt: createJSTTimestamp(),
           } as any,
           include: {
             project: { select: { name: true } },
@@ -545,7 +548,7 @@ export async function PUT(request: NextRequest) {
     const processedData = { ...updateData };
     ['plannedStartDate', 'plannedEndDate', 'actualStartDate', 'actualEndDate'].forEach(field => {
       if (processedData[field]) {
-        processedData[field] = new Date(processedData[field]);
+        processedData[field] = parseJSTDate(processedData[field]);
       }
     });
 
@@ -558,7 +561,10 @@ export async function PUT(request: NextRequest) {
 
     const updatedEntry = await prisma.wBSEntry.update({
       where: { id },
-      data: processedData,
+      data: {
+        ...processedData,
+        updatedAt: createJSTTimestamp(),
+      },
       include: {
         project: { select: { name: true } },
         task: { 

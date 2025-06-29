@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { TimeEntry } from '../types';
 import { validateDateInput } from '../utils/dateValidation';
+import { formatJSTDate } from '../utils/timezone';
 
 interface BulkTimeEntryModalProps {
   isOpen: boolean;
@@ -108,7 +109,7 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
             projectId: entry.projectId,
             phaseId: entry.phaseId,
             taskId: entry.taskId,
-            date: selectedDate.toISOString(),
+            date: formatJSTDate(selectedDate, 'date'),
             hours: entry.hours,
             description: entry.description,
           }),
@@ -142,7 +143,7 @@ export default function BulkTimeEntryModal({ isOpen, onClose, selectedDate, edit
               projectId: entry.projectId,
               phaseId: entry.phaseId,
               taskId: entry.taskId,
-              date: selectedDate.toISOString(),
+              date: formatJSTDate(selectedDate, 'date'),
               hours: entry.hours,
               description: entry.description,
             }),

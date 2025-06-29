@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 export async function GET(
   request: Request,
@@ -80,7 +81,7 @@ export async function PUT(
       name,
       email,
       role: role as 'ADMIN' | 'MANAGER' | 'MEMBER',
-      updatedAt: new Date(),
+      updatedAt: createJSTTimestamp(),
     };
 
     // 組織情報の更新

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 export async function GET() {
   try {
@@ -93,7 +94,11 @@ export async function POST(request: Request) {
     if (groupId) userData.groupId = groupId;
 
     const user = await prisma.user.create({
-      data: userData,
+      data: {
+        ...userData,
+        createdAt: createJSTTimestamp(),
+        updatedAt: createJSTTimestamp(),
+      },
     });
 
     // パスワードを除外してレスポンス

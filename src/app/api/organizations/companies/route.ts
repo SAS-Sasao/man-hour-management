@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
 import { getCurrentUser, canAccessCompany, canCreateCompany } from '../../../../utils/auth';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 // 会社一覧取得
 export async function GET(request: NextRequest) {
@@ -148,7 +149,9 @@ export async function POST(request: NextRequest) {
       data: {
         code,
         name,
-        description
+        description,
+        createdAt: createJSTTimestamp(),
+        updatedAt: createJSTTimestamp(),
       }
     });
 

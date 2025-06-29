@@ -1,4 +1,5 @@
 import { Phase, Task, TaskStatus } from '@/types';
+import { createJSTTimestamp } from './timezone';
 
 export const DEFAULT_PHASES = [
   { name: '要件定義', description: 'システム要件の定義と分析' },
@@ -28,7 +29,7 @@ export const DEFAULT_TASKS = [
 ];
 
 export function createDefaultPhasesAndTasks(projectId: string): { phases: Phase[], tasks: Task[] } {
-  const now = new Date();
+  const now = createJSTTimestamp();
   const phases: Phase[] = [];
   const tasks: Task[] = [];
 

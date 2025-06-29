@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient, TaskStatus } from '@prisma/client';
+import { parseJSTDate, createJSTTimestamp } from '@/utils/timezone';
 
 const prisma = new PrismaClient();
 
@@ -38,13 +39,13 @@ export async function PUT(
         phaseId: phaseId || null,
         taskId: taskId || null,
         assigneeId: assigneeId || null,
-        plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : null,
-        plannedEndDate: plannedEndDate ? new Date(plannedEndDate) : null,
-        actualStartDate: actualStartDate ? new Date(actualStartDate) : null,
-        actualEndDate: actualEndDate ? new Date(actualEndDate) : null,
+        plannedStartDate: plannedStartDate ? parseJSTDate(plannedStartDate) : null,
+        plannedEndDate: plannedEndDate ? parseJSTDate(plannedEndDate) : null,
+        actualStartDate: actualStartDate ? parseJSTDate(actualStartDate) : null,
+        actualEndDate: actualEndDate ? parseJSTDate(actualEndDate) : null,
         estimatedHours: parseFloat(estimatedHours) || 0,
         actualHours: parseFloat(actualHours) || 0,
-        updatedAt: new Date(),
+        updatedAt: createJSTTimestamp(),
       },
       include: {
         task: {

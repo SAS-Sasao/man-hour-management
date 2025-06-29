@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 // Phase更新 (PUT)
 export async function PUT(
@@ -53,7 +54,7 @@ export async function PUT(
       data: {
         name: name.trim(),
         description: description?.trim() || '',
-        updatedAt: new Date()
+        updatedAt: createJSTTimestamp()
       }
     });
 

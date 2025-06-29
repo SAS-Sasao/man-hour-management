@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
+import { parseJSTDate, createJSTTimestamp } from '@/utils/timezone';
 
 // プロジェクト取得
 export async function GET(
@@ -84,8 +85,8 @@ export async function PUT(
     }
 
     // 日付の妥当性チェック
-    const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : null;
+    const start = parseJSTDate(startDate);
+    const end = endDate ? parseJSTDate(endDate) : null;
 
     if (isNaN(start.getTime())) {
       return NextResponse.json(
@@ -186,7 +187,8 @@ export async function PUT(
           startDate: start,
           endDate: end,
           status,
-          managerId: managerId || null
+          managerId: managerId || null,
+          updatedAt: createJSTTimestamp(),
         }
       });
 

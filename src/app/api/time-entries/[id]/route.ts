@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
+import { parseJSTDate, createJSTTimestamp } from '@/utils/timezone';
 
 export async function DELETE(
   request: Request,
@@ -135,9 +136,10 @@ export async function PUT(
         projectId,
         phaseId,
         taskId,
-        date: new Date(date),
+        date: parseJSTDate(date),
         hours: parsedHours,
         description: description || '',
+        updatedAt: createJSTTimestamp(),
       },
       include: {
         user: {

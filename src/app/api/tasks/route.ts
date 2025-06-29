@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 export async function GET() {
   try {
@@ -108,6 +109,8 @@ export async function POST(request: Request) {
         description: description || '',
         estimatedHours: parsedEstimatedHours,
         order: nextOrder,
+        createdAt: createJSTTimestamp(),
+        updatedAt: createJSTTimestamp(),
       },
       include: {
         project: {

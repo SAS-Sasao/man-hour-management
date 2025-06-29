@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
+import { createJSTTimestamp } from '@/utils/timezone';
 
 // グループ一覧取得
 export async function GET(request: NextRequest) {
@@ -81,7 +82,9 @@ export async function POST(request: NextRequest) {
         departmentId,
         code,
         name,
-        description
+        description,
+        createdAt: createJSTTimestamp(),
+        updatedAt: createJSTTimestamp(),
       },
       include: {
         department: {
