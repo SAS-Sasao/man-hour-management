@@ -1,4 +1,4 @@
-import { Phase, Task } from '@/types';
+import { Phase, Task, TaskStatus } from '@/types';
 
 export const DEFAULT_PHASES = [
   { name: '要件定義', description: 'システム要件の定義と分析' },
@@ -57,6 +57,7 @@ export function createDefaultPhasesAndTasks(projectId: string): { phases: Phase[
         description: taskData.description,
         estimatedHours: 0,
         order: taskIndex + 1,
+        status: 'NOT_STARTED' as TaskStatus,
         createdAt: now,
         updatedAt: now
       };
