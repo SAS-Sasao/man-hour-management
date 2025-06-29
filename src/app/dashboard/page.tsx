@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '../../components/Layout';
+import WBSDashboard from '../../components/WBSDashboard';
 import { useApp } from '../../contexts/AppContext';
 
 export default function Dashboard() {
@@ -403,6 +404,17 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* WBSダッシュボード */}
+        <div className="bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl border border-white/20">
+          <div className="px-6 py-6">
+            <h3 className="text-xl leading-6 font-bold text-gray-900 mb-4 flex items-center">
+              <span className="text-2xl mr-3">📅</span>
+              WBS進捗状況
+            </h3>
+            <WBSDashboard />
           </div>
         </div>
       </div>

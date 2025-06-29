@@ -35,6 +35,10 @@ model User {
   // 新しいプロジェクト関連リレーション
   projectManagers ProjectManager[] @relation("ProjectManagerUser")
   projectMembers  ProjectMember[]  @relation("ProjectMemberUser")
+  
+  // 🆕 WBS用リレーション
+  assignedTasks   Task[]           @relation("TaskAssignee")
+  assignedWBSEntries WBSEntry[]    @relation("WBSAssignee")
 
   // 会社内でメールアドレスが一意になるよう複合一意制約
   @@unique([companyId, email])
@@ -125,6 +129,7 @@ model Project {
   timeEntries TimeEntry[]
   managers    ProjectManager[]
   members     ProjectMember[]
+  wbsEntries  WBSEntry[]
 
   @@map("projects")
 }
@@ -140,6 +145,7 @@ model Phase {
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks       Task[]
   timeEntries TimeEntry[]
+  wbsEntries  WBSEntry[]
 
   @@map("phases")
 }
@@ -154,9 +160,23 @@ model Task {
   order          Int
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+  
+  // 🆕 WBS用新規フィールド（全てNULL許可で安全に追加）
+  plannedStartDate  DateTime?     // 予定開始日
+  plannedEndDate    DateTime?     // 予定終了日
+  actualStartDate   DateTime?     // 実際の開始日
+  actualEndDate     DateTime?     // 実際の終了日
+  status           TaskStatus @default(NOT_STARTED)  // 作業状況
+  assigneeId       String?        // 担当者ID
+  
+  // 既存リレーション（変更なし）
   phase          Phase       @relation(fields: [phaseId], references: [id], onDelete: Cascade)
   project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   timeEntries    TimeEntry[]
+  
+  // 🆕 新規リレーション
+  assignee       User?       @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  wbsEntries     WBSEntry[]
 
   @@map("tasks")
 }
@@ -222,4 +242,52 @@ enum ProjectStatus {
   ACTIVE
   COMPLETED
   ON_HOLD
+}
+
+// WBSエントリ（独立した作業管理）
+model WBSEntry {
+  id                String      @id @default(cuid())
+  name              String      // 作業名
+  description       String?     // 作業説明
+  
+  // 関連付け（どちらかは必須、両方設定も可能）
+  taskId            String?     // 既存タスクとの関連付け（任意）
+  projectId         String?     // プロジェクトとの直接関連付け（任意）
+  phaseId           String?     // フェーズとの関連付け（任意）
+  
+  // 担当者
+  assigneeId        String?     // 担当者ID
+  
+  // 予定
+  plannedStartDate  DateTime?   // 予定開始日
+  plannedEndDate    DateTime?   // 予定終了日
+  estimatedHours    Float       @default(0) // 予定工数
+  
+  // 実績
+  actualStartDate   DateTime?   // 実際の開始日
+  actualEndDate     DateTime?   // 実際の終了日
+  actualHours       Float       @default(0) // 実績工数
+  
+  // ステータス
+  status            TaskStatus  @default(NOT_STARTED)
+  
+  // メタデータ
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // リレーション
+  task              Task?       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project           Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase             Phase?      @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  assignee          User?       @relation("WBSAssignee", fields: [assigneeId], references: [id])
+  
+  @@map("wbs_entries")
+}
+
+enum TaskStatus {
+  NOT_STARTED      // 未対応
+  IN_PROGRESS      // 対応中
+  REVIEW_PENDING   // レビュー待ち
+  REVIEWED         // レビュー済
+  COMPLETED        // 完了
 }

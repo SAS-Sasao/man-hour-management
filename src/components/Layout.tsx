@@ -72,6 +72,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigation = [
     { name: 'ダッシュボード', href: '/dashboard', icon: '📊' },
     { name: 'プロジェクト', href: '/projects', icon: '📋' },
+    { name: 'WBS管理', href: '/wbs', icon: '📅' },
     { name: '工数入力', href: '/time-entry', icon: '⏰' },
     { name: 'レポート', href: '/reports', icon: '📈' },
     
@@ -253,10 +254,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       className={`${
                         pathname === item.href
                           ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                          : 'text-gray-700 hover:bg-gray-100/50 hover:text-gray-900'
-                      } group flex items-center px-4 py-3 text-base font-medium rounded-xl transition-all duration-200`}
+                          : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-900'
+                      } rounded-xl px-4 py-3 font-medium text-base flex items-center space-x-3 transition-all duration-200 w-full`}
                     >
-                      <span className="text-xl mr-4">{item.icon}</span>
+                      <span className="text-xl">{item.icon}</span>
                       <span>{item.name}</span>
                     </Link>
                   ))}
