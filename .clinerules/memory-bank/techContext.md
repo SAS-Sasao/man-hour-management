@@ -70,6 +70,8 @@ man-hour-management/
 │   └── [id]/           # 個別工数API
 ├── users/               # ユーザー管理API
 │   └── login/          # ログインAPI
+├── 🆕 wbs/             # WBS管理API
+│   └── [id]/           # 個別WBS作業API
 └── test-db/            # DB接続テスト
 ```
 
@@ -97,6 +99,8 @@ datasource db {
 7. **Division**: 事業部マスタ
 8. **Department**: 部署マスタ
 9. **Group**: グループマスタ
+10. **🆕 WBSEntry**: WBS作業管理（独立した作業管理システム）
+11. **🆕 TaskStatus**: 作業状況管理（enum: NOT_STARTED/IN_PROGRESS/REVIEW_PENDING/REVIEWED/COMPLETED）
 
 ### リレーション設計
 - User → Project (1:N, Manager関係)

@@ -331,14 +331,309 @@ catch (error) {
 }
 ```
 
+## 🆕 WBS管理パターン
+
+### 1. WBS独立管理パターン
+```typescript
+// WBSEntry - 独立した作業管理システム
+model WBSEntry {
+  id                String      @id @default(cuid())
+  name              String      // 作業名
+  description       String?     // 作業説明
+  taskId            String?     // 関連タスク（任意）
+  projectId         String?     // 関連プロジェクト（任意）
+  phaseId           String?     // 関連フェーズ（任意）
+  assigneeId        String?     // 担当者（任意）
+  status            TaskStatus  @default(NOT_STARTED)
+  plannedStartDate  DateTime?   // 予定開始日
+  plannedEndDate    DateTime?   // 予定終了日
+  actualStartDate   DateTime?   // 実際の開始日
+  actualEndDate     DateTime?   // 実際の終了日
+  estimatedHours    Float       @default(0)
+  actualHours       Float       @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+```
+
+### 2. WBS可視化パターン
+
+#### ダッシュボード集計パターン
+```typescript
+// 進捗レポート生成
+const generateProgressReport = (wbsEntries: WBSEntry[], projectId?: string) => {
+  const filteredEntries = projectId 
+    ? wbsEntries.filter(entry => entry.projectId === projectId)
+    : wbsEntries;
+
+  const totalTasks = filteredEntries.length;
+  const completedTasks = filteredEntries.filter(entry => entry.status === 'COMPLETED').length;
+  const inProgressTasks = filteredEntries.filter(entry => entry.status === 'IN_PROGRESS').length;
+  const overdueTasks = filteredEntries.filter(entry => isOverdue(entry)).length;
+
+  return {
+    totalTasks,
+    completedTasks,
+    inProgressTasks,
+    overdueTasks,
+    progressPercentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  };
+};
+```
+
+#### 担当者別作業負荷分析パターン
+```typescript
+// 作業負荷分析
+const analyzeWorkload = (wbsEntries: WBSEntry[], users: User[]) => {
+  return users.map(user => {
+    const userEntries = wbsEntries.filter(entry => entry.assigneeId === user.id);
+    const activeTasks = userEntries.filter(entry => 
+      entry.status === 'IN_PROGRESS' || entry.status === 'NOT_STARTED'
+    ).length;
+    
+    const completedTasks = userEntries.filter(entry => entry.status === 'COMPLETED').length;
+    const overdueTasksCount = userEntries.filter(entry => isOverdue(entry)).length;
+    
+    // 効率性計算（実績工数 / 予定工数）
+    const totalEstimated = userEntries.reduce((sum, entry) => sum + entry.estimatedHours, 0);
+    const totalActual = userEntries.reduce((sum, entry) => sum + entry.actualHours, 0);
+    const efficiency = totalEstimated > 0 ? totalActual / totalEstimated : 0;
+    
+    // 作業負荷レベル判定
+    const currentWorkload = determineWorkloadLevel(activeTasks, overdueTasksCount);
+
+    return {
+      assigneeId: user.id,
+      assigneeName: user.name,
+      activeTasks,
+      completedTasks,
+      overdueTasksCount,
+      efficiency,
+      currentWorkload
+    };
+  });
+};
+```
+
+### 3. WBS遅延分析パターン
+```typescript
+// 遅延状況判定
+const getDelayStatus = (entry: WBSEntry) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (!entry.plannedEndDate) return { status: 'unknown', days: 0 };
+  
+  const plannedEnd = new Date(entry.plannedEndDate);
+  plannedEnd.setHours(0, 0, 0, 0);
+  
+  // 完了済みの場合は実際の終了日と予定終了日を比較
+  if (entry.status === 'COMPLETED') {
+    if (entry.actualEndDate) {
+      const actualEnd = new Date(entry.actualEndDate);
+      actualEnd.setHours(0, 0, 0, 0);
+      const diffTime = actualEnd.getTime() - plannedEnd.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays > 0) {
+        return { status: 'delayed', days: diffDays }; // 遅延日数
+      } else if (diffDays < 0) {
+        return { status: 'on-time', days: Math.abs(diffDays) }; // 前倒し日数
+      } else {
+        return { status: 'on-time', days: 0 }; // 予定通り
+      }
+    }
+    return { status: 'on-time', days: 0 };
+  }
+  
+  // 未完了の場合は今日の日付と予定終了日を比較
+  const diffTime = today.getTime() - plannedEnd.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays > 0) {
+    return { status: 'overdue', days: diffDays }; // 期限超過日数
+  }
+  
+  return { status: 'on-track', days: Math.abs(diffDays) }; // 余裕日数
+};
+```
+
+### 4. WBS一括操作パターン
+
+#### 一括WBS作業登録パターン
+```typescript
+// 一括WBS作業登録
+const handleBulkWBSCreation = async (entries: WBSEntryData[]) => {
+  try {
+    const response = await fetch('/api/wbs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ entries }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      showSuccessMessage(`${entries.length}件のWBS作業を登録しました`);
+      return result;
+    } else {
+      const error = await response.text();
+      throw new Error(error);
+    }
+  } catch (error) {
+    showErrorMessage(`WBS作業登録エラー: ${error.message}`);
+    throw error;
+  }
+};
+```
+
+#### 既存タスクからのWBS作業追加パターン
+```typescript
+// 既存タスクからWBS作業を生成
+const createWBSFromTasks = (selectedTasks: Task[], commonSettings: Partial<WBSEntry>) => {
+  return selectedTasks.map(task => ({
+    name: task.name,
+    description: task.description,
+    taskId: task.id,
+    projectId: task.projectId,
+    phaseId: task.phaseId,
+    estimatedHours: commonSettings.estimatedHours || task.estimatedHours || 0,
+    assigneeId: commonSettings.assigneeId || null,
+    plannedStartDate: commonSettings.plannedStartDate || null,
+    plannedEndDate: commonSettings.plannedEndDate || null,
+    status: commonSettings.status || 'NOT_STARTED',
+    actualStartDate: null,
+    actualEndDate: null,
+    actualHours: 0
+  }));
+};
+```
+
+### 5. WBSガントチャートパターン
+```typescript
+// ガントチャート表示用データ変換
+const transformToGanttData = (wbsEntries: WBSEntry[]) => {
+  return wbsEntries.map(entry => ({
+    id: entry.id,
+    name: entry.name,
+    start: entry.plannedStartDate || new Date(),
+    end: entry.plannedEndDate || new Date(),
+    actualStart: entry.actualStartDate,
+    actualEnd: entry.actualEndDate,
+    progress: calculateProgress(entry),
+    status: entry.status,
+    assignee: entry.assignee?.name || '未割当',
+    isOverdue: isOverdue(entry),
+    delayDays: getDelayStatus(entry).days
+  }));
+};
+
+// 進捗率計算
+const calculateProgress = (entry: WBSEntry): number => {
+  if (entry.status === 'COMPLETED') return 100;
+  if (entry.status === 'NOT_STARTED') return 0;
+  
+  // 工数ベースの進捗計算
+  if (entry.estimatedHours > 0) {
+    return Math.min((entry.actualHours / entry.estimatedHours) * 100, 95);
+  }
+  
+  // 日付ベースの進捗計算
+  if (entry.plannedStartDate && entry.plannedEndDate) {
+    const today = new Date();
+    const start = new Date(entry.plannedStartDate);
+    const end = new Date(entry.plannedEndDate);
+    
+    if (today < start) return 0;
+    if (today > end) return 95; // 期限超過でも100%にはしない
+    
+    const totalDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    const elapsedDays = (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    
+    return Math.min((elapsedDays / totalDays) * 100, 95);
+  }
+  
+  return 50; // デフォルト進捗
+};
+```
+
+### 6. WBSカレンダー表示パターン
+```typescript
+// カレンダー表示用データ変換
+const transformToCalendarTasks = (wbsEntries: WBSEntry[]): CalendarTask[] => {
+  return wbsEntries.map(entry => ({
+    id: entry.id,
+    name: entry.name,
+    projectName: entry.project?.name || '未分類',
+    phaseName: entry.phase?.name || '未分類',
+    assigneeName: entry.assignee?.name || '未割当',
+    status: entry.status,
+    plannedStartDate: entry.plannedStartDate,
+    plannedEndDate: entry.plannedEndDate,
+    actualStartDate: entry.actualStartDate,
+    actualEndDate: entry.actualEndDate,
+    estimatedHours: entry.estimatedHours,
+    actualHours: entry.actualHours,
+    isOverdue: isOverdue(entry),
+    color: getStatusColor(entry.status)
+  }));
+};
+
+// ステータス別色分け
+const getStatusColor = (status: TaskStatus): string => {
+  switch (status) {
+    case 'NOT_STARTED': return '#6B7280'; // グレー
+    case 'IN_PROGRESS': return '#3B82F6'; // ブルー
+    case 'REVIEW_PENDING': return '#F59E0B'; // イエロー
+    case 'REVIEWED': return '#10B981'; // グリーン
+    case 'COMPLETED': return '#059669'; // ダークグリーン
+    default: return '#6B7280';
+  }
+};
+```
+
+### 7. WBS統合管理パターン
+```typescript
+// WBSページでの統合管理
+const WBSManagementPattern = {
+  // タブ切り替え管理
+  tabManagement: {
+    gantt: 'ガントチャート表示',
+    dashboard: 'ダッシュボード表示',
+    calendar: 'カレンダー表示'
+  },
+  
+  // フィルタリング機能
+  filtering: {
+    byProject: (entries: WBSEntry[], projectId: string) => 
+      entries.filter(entry => entry.projectId === projectId),
+    byAssignee: (entries: WBSEntry[], assigneeId: string) => 
+      entries.filter(entry => entry.assigneeId === assigneeId),
+    byStatus: (entries: WBSEntry[], status: TaskStatus) => 
+      entries.filter(entry => entry.status === status)
+  },
+  
+  // 一括操作機能
+  bulkOperations: {
+    createFromTasks: '既存タスクからWBS作業追加',
+    createNew: '新規WBS作業一括作成',
+    updateStatus: '一括ステータス更新',
+    assignUsers: '一括担当者割り当て'
+  }
+};
+```
+
 ## 今後の拡張パターン
 
 ### 1. 機能拡張の考慮点
 - **モジュール化**: 機能ごとの独立性確保
 - **設定可能性**: 環境変数による動作制御
 - **国際化対応**: 多言語対応の準備
+- **🆕 WBS機能拡張**: 依存関係管理、クリティカルパス分析、リソース最適化
 
 ### 2. スケーラビリティ
 - **データベース最適化**: インデックス設計とクエリ最適化
 - **キャッシュ戦略**: Redis等の外部キャッシュ導入検討
 - **API分離**: マイクロサービス化の検討
+- **🆕 WBSパフォーマンス**: 大規模プロジェクト対応、リアルタイム更新、並列処理最適化
