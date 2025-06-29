@@ -51,7 +51,8 @@ export default function ProjectsPage() {
       status: formData.status,
       managerId: formData.managerId || state.currentUser?.id || '',
       managerIds: formData.managerIds,
-      memberIds: formData.memberIds
+      memberIds: formData.memberIds,
+      currentUserId: state.currentUser?.id
     };
 
     try {
@@ -117,6 +118,15 @@ export default function ProjectsPage() {
 
   const handleEdit = (project: Project) => {
     setEditingProject(project);
+    
+    // 現在のマネージャーとメンバーのIDを取得
+    const currentManagerIds = project.managers?.map(m => m.userId) || [];
+    const currentMemberIds = project.members?.map(m => m.userId) || [];
+    
+    console.log('編集対象プロジェクト:', project);
+    console.log('現在のマネージャーIDs:', currentManagerIds);
+    console.log('現在のメンバーIDs:', currentMemberIds);
+    
     setFormData({
       name: project.name,
       description: project.description,
@@ -124,8 +134,8 @@ export default function ProjectsPage() {
       endDate: project.endDate ? project.endDate.toISOString().split('T')[0] : '',
       status: project.status,
       managerId: project.managerId || '',
-      managerIds: [],
-      memberIds: []
+      managerIds: currentManagerIds,
+      memberIds: currentMemberIds
     });
     setShowCreateForm(true);
   };
@@ -569,6 +579,13 @@ export default function ProjectsPage() {
                             (project.endDate.getTime() - project.startDate.getTime())) * 100))
                   : 0;
 
+                // メンバー権限の場合、編集・削除権限をチェック
+                const canEdit = state.currentUser?.role !== 'MEMBER' || 
+                  (state.currentUser && state.currentUser.id ? (
+                    project.managerId === state.currentUser.id ||
+                    project.managers?.some(m => m.userId === state.currentUser!.id)
+                  ) : false);
+
                 return (
                   <div 
                     key={project.id} 
@@ -593,22 +610,25 @@ export default function ProjectsPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEdit(project)}
-                            className="w-8 h-8 rounded-lg bg-blue-100 hover:bg-blue-200 flex items-center justify-center transition-colors"
-                            title="編集"
-                          >
-                            <span className="text-sm">✏️</span>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(project.id)}
-                            className="w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors"
-                            title="削除"
-                          >
-                            <span className="text-sm">🗑️</span>
-                          </button>
-                        </div>
+                        {/* 編集・削除ボタンは権限がある場合のみ表示 */}
+                        {canEdit && (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEdit(project)}
+                              className="w-8 h-8 rounded-lg bg-blue-100 hover:bg-blue-200 flex items-center justify-center transition-colors"
+                              title="編集"
+                            >
+                              <span className="text-sm">✏️</span>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(project.id)}
+                              className="w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors"
+                              title="削除"
+                            >
+                              <span className="text-sm">🗑️</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* プロジェクト説明 */}
@@ -666,16 +686,18 @@ export default function ProjectsPage() {
                         </div>
                       </div>
 
-                      {/* アクションボタン */}
-                      <div className="pt-4 border-t border-gray-100">
-                        <Link
-                          href={`/projects/${project.id}/phases`}
-                          className="btn-success w-full flex items-center justify-center space-x-2"
-                        >
-                          <span className="text-lg">🔧</span>
-                          <span>工程管理</span>
-                        </Link>
-                      </div>
+                      {/* アクションボタン - メンバー権限では工程管理ボタンを非表示 */}
+                      {canEdit && (
+                        <div className="pt-4 border-t border-gray-100">
+                          <Link
+                            href={`/projects/${project.id}/phases`}
+                            className="btn-success w-full flex items-center justify-center space-x-2"
+                          >
+                            <span className="text-lg">🔧</span>
+                            <span>工程管理</span>
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

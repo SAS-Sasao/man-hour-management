@@ -22,7 +22,29 @@ export async function GET(
             phase: true,
             task: true
           }
-        }
+        },
+        managers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       }
     });
 
@@ -51,7 +73,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, startDate, endDate, status, managerId } = body;
+    const { name, description, startDate, endDate, status, managerId, managerIds, memberIds } = body;
 
     // バリデーション
     if (!name || !startDate) {
@@ -86,7 +108,7 @@ export async function PUT(
       );
     }
 
-    // マネージャーの存在確認
+    // マネージャーの存在確認（後方互換性のため）
     if (managerId) {
       const manager = await prisma.user.findUnique({
         where: { id: managerId }
@@ -107,24 +129,135 @@ export async function PUT(
       }
     }
 
-    // プロジェクト更新
-    const updatedProject = await prisma.project.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        startDate: start,
-        endDate: end,
-        status,
-        managerId: managerId || null
-      },
-      include: {
-        phases: {
-          include: {
-            tasks: true
-          }
+    // 複数マネージャーの存在確認
+    if (managerIds && managerIds.length > 0) {
+      const managers = await prisma.user.findMany({
+        where: { id: { in: managerIds } }
+      });
+
+      if (managers.length !== managerIds.length) {
+        return NextResponse.json(
+          { error: '指定されたマネージャーの一部が見つかりません' },
+          { status: 400 }
+        );
+      }
+
+      // マネージャー権限チェック
+      const invalidManagers = managers.filter((m: any) => m.role !== 'ADMIN' && m.role !== 'MANAGER');
+      if (invalidManagers.length > 0) {
+        return NextResponse.json(
+          { error: 'マネージャーには管理者またはマネージャー権限が必要です' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 複数メンバーの存在確認
+    if (memberIds && memberIds.length > 0) {
+      const members = await prisma.user.findMany({
+        where: { id: { in: memberIds } }
+      });
+
+      if (members.length !== memberIds.length) {
+        return NextResponse.json(
+          { error: '指定されたメンバーの一部が見つかりません' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // プロジェクト更新を段階的に実行
+    const updatedProject = await prisma.$transaction(async (tx: any) => {
+      // 既存のプロジェクトを取得
+      const existingProject = await tx.project.findUnique({
+        where: { id }
+      });
+
+      if (!existingProject) {
+        throw new Error('プロジェクトが見つかりません');
+      }
+
+      // 1. プロジェクト基本情報を更新
+      await tx.project.update({
+        where: { id },
+        data: {
+          name,
+          description,
+          startDate: start,
+          endDate: end,
+          status,
+          managerId: managerId || null
+        }
+      });
+
+      // 2. 既存のマネージャー・メンバー関係を削除
+      await tx.projectManager.deleteMany({
+        where: { projectId: id }
+      });
+
+      await tx.projectMember.deleteMany({
+        where: { projectId: id }
+      });
+
+      // 3. 新しいマネージャー関係を作成
+      if (managerIds && managerIds.length > 0) {
+        for (let i = 0; i < managerIds.length; i++) {
+          await tx.projectManager.create({
+            data: {
+              projectId: id,
+              userId: managerIds[i],
+              role: i === 0 ? 'PRIMARY' : 'SECONDARY'
+            }
+          });
         }
       }
+
+      // 4. 新しいメンバー関係を作成
+      if (memberIds && memberIds.length > 0) {
+        for (const userId of memberIds) {
+          await tx.projectMember.create({
+            data: {
+              projectId: id,
+              userId,
+              role: 'MEMBER'
+            }
+          });
+        }
+      }
+
+      // 5. 更新されたプロジェクトを関連データと共に取得
+      return await tx.project.findUnique({
+        where: { id },
+        include: {
+          managers: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          phases: {
+            include: {
+              tasks: true
+            }
+          }
+        }
+      });
     });
 
     return NextResponse.json(updatedProject);
@@ -173,7 +306,7 @@ export async function DELETE(
     }
 
     // 関連データを含めて削除（トランザクション使用）
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // 時間入力を削除
       await tx.timeEntry.deleteMany({
         where: { projectId: id }
@@ -188,6 +321,15 @@ export async function DELETE(
 
       // 工程を削除
       await tx.phase.deleteMany({
+        where: { projectId: id }
+      });
+
+      // プロジェクトマネージャー・メンバー関係を削除
+      await tx.projectManager.deleteMany({
+        where: { projectId: id }
+      });
+
+      await tx.projectMember.deleteMany({
         where: { projectId: id }
       });
 

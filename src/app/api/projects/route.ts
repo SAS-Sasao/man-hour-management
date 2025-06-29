@@ -53,7 +53,21 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, startDate, endDate, managerId, managerIds, memberIds, status } = body;
+    const { name, description, startDate, endDate, managerId, managerIds, memberIds, status, currentUserId } = body;
+
+    // 権限チェック：メンバー権限のユーザーはプロジェクトを作成できない
+    if (currentUserId) {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: currentUserId }
+      });
+
+      if (currentUser && currentUser.role === 'MEMBER') {
+        return NextResponse.json(
+          { success: false, error: 'メンバー権限ではプロジェクトを作成できません' },
+          { status: 403 }
+        );
+      }
+    }
 
     // バリデーション
     if (!name || name.trim() === '') {
@@ -156,56 +170,75 @@ export async function POST(request: Request) {
       );
     }
 
-    const project = await prisma.project.create({
-      data: {
-        name: name.trim(),
-        description: description?.trim() || '',
-        startDate: start,
-        endDate: end,
-        managerId, // 後方互換性のため残す
-        status: status || 'ACTIVE',
-        managers: managerIds && managerIds.length > 0 ? {
-          create: managerIds.map((userId: string, index: number) => ({
-            userId,
-            role: index === 0 ? 'PRIMARY' : 'SECONDARY'
-          }))
-        } : undefined,
-        members: memberIds && memberIds.length > 0 ? {
-          create: memberIds.map((userId: string) => ({
-            userId,
-            role: 'MEMBER'
-          }))
-        } : undefined,
-      },
-      include: {
-        managers: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
+    // トランザクションでプロジェクトとリレーションを作成
+    const result = await prisma.$transaction(async (tx: any) => {
+      // プロジェクトを作成
+      const project = await tx.project.create({
+        data: {
+          name: name.trim(),
+          description: description?.trim() || '',
+          startDate: start,
+          endDate: end,
+          managerId, // 後方互換性のため残す
+          status: status || 'ACTIVE',
+        },
+      });
+
+      // プロジェクトマネージャーを追加
+      if (managerIds && managerIds.length > 0) {
+        await tx.projectManager.createMany({
+          data: managerIds.map((userId: string) => ({
+            projectId: project.id,
+            userId: userId,
+          })),
+        });
+      }
+
+      // プロジェクトメンバーを追加
+      if (memberIds && memberIds.length > 0) {
+        await tx.projectMember.createMany({
+          data: memberIds.map((userId: string) => ({
+            projectId: project.id,
+            userId: userId,
+          })),
+        });
+      }
+
+      // 作成されたプロジェクトを関連データと一緒に取得
+      const projectWithRelations = await tx.project.findUnique({
+        where: { id: project.id },
+        include: {
+          managers: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
               },
             },
           },
         },
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-      },
+      });
+
+      return projectWithRelations;
     });
 
     return NextResponse.json({
       success: true,
-      data: project,
+      data: result,
       message: 'プロジェクトが作成されました'
     });
   } catch (error) {
