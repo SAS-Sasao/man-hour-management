@@ -70,9 +70,36 @@ export interface Project {
   startDate: Date;
   endDate?: Date;
   status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
-  managerId: string;
+  managerId?: string; // 後方互換性のため残す
   createdAt: Date;
   updatedAt: Date;
+  managers?: ProjectManager[];
+  members?: ProjectMember[];
+  phases?: Phase[];
+  tasks?: Task[];
+  timeEntries?: TimeEntry[];
+}
+
+export interface ProjectManager {
+  id: string;
+  projectId: string;
+  userId: string;
+  role?: string; // "PRIMARY", "SECONDARY" など
+  createdAt: Date;
+  user?: User;
+  project?: Project;
+}
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  role?: string; // "DEVELOPER", "TESTER", "ANALYST" など
+  joinDate: Date;
+  leaveDate?: Date;
+  createdAt: Date;
+  user?: User;
+  project?: Project;
 }
 
 export interface Phase {

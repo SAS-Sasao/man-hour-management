@@ -30,8 +30,11 @@ model User {
   group           Group?      @relation(fields: [groupId], references: [id])
   
   // 既存リレーション
-  managedProjects Project[]   @relation("ProjectManager")
   timeEntries     TimeEntry[]
+  
+  // 新しいプロジェクト関連リレーション
+  projectManagers ProjectManager[] @relation("ProjectManagerUser")
+  projectMembers  ProjectMember[]  @relation("ProjectMemberUser")
 
   // 会社内でメールアドレスが一意になるよう複合一意制約
   @@unique([companyId, email])
@@ -107,19 +110,21 @@ model Group {
 }
 
 model Project {
-  id          String        @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  description String?
+  description String
   startDate   DateTime
   endDate     DateTime?
-  status      ProjectStatus @default(ACTIVE)
-  managerId   String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  status      ProjectStatus
+  managerId   String?  // 後方互換性のため残す
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   phases      Phase[]
-  manager     User?         @relation("ProjectManager", fields: [managerId], references: [id])
   tasks       Task[]
   timeEntries TimeEntry[]
+  managers    ProjectManager[]
+  members     ProjectMember[]
 
   @@map("projects")
 }
@@ -173,6 +178,38 @@ model TimeEntry {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("time_entries")
+}
+
+// プロジェクトマネージャー（多対多）
+model ProjectManager {
+  id        String  @id @default(cuid())
+  projectId String
+  userId    String
+  role      String? // "PRIMARY", "SECONDARY" など
+  createdAt DateTime @default(now())
+  
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation("ProjectManagerUser", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId])
+  @@map("project_managers")
+}
+
+// プロジェクトメンバー（多対多）
+model ProjectMember {
+  id        String  @id @default(cuid())
+  projectId String
+  userId    String
+  role      String? // "DEVELOPER", "TESTER", "ANALYST" など
+  joinDate  DateTime @default(now())
+  leaveDate DateTime?
+  createdAt DateTime @default(now())
+  
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId])
+  @@map("project_members")
 }
 
 enum Role {

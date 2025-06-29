@@ -139,13 +139,7 @@ export default function OrganizationsPage() {
             <p className="text-gray-600 mt-2">会社・事業部・部署・グループの管理</p>
           </div>
           <div className="flex space-x-3">
-            <button
-              onClick={() => setShowCompanyModal(true)}
-              className="btn-primary hover-lift"
-            >
-              <span className="text-lg mr-2">🏢</span>
-              会社追加
-            </button>
+            {/* 会社追加ボタンは削除 */}
           </div>
         </div>
 

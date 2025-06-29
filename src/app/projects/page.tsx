@@ -20,7 +20,9 @@ export default function ProjectsPage() {
     startDate: '',
     endDate: '',
     status: 'ACTIVE' as Project['status'],
-    managerId: ''
+    managerId: '',
+    managerIds: [] as string[],
+    memberIds: [] as string[]
   });
 
   const resetForm = () => {
@@ -30,7 +32,9 @@ export default function ProjectsPage() {
       startDate: '',
       endDate: '',
       status: 'ACTIVE',
-      managerId: ''
+      managerId: '',
+      managerIds: [],
+      memberIds: []
     });
     setEditingProject(null);
     setShowCreateForm(false);
@@ -45,7 +49,9 @@ export default function ProjectsPage() {
       startDate: formData.startDate,
       endDate: formData.endDate || null,
       status: formData.status,
-      managerId: formData.managerId || state.currentUser?.id || ''
+      managerId: formData.managerId || state.currentUser?.id || '',
+      managerIds: formData.managerIds,
+      memberIds: formData.memberIds
     };
 
     try {
@@ -117,7 +123,9 @@ export default function ProjectsPage() {
       startDate: project.startDate.toISOString().split('T')[0],
       endDate: project.endDate ? project.endDate.toISOString().split('T')[0] : '',
       status: project.status,
-      managerId: project.managerId
+      managerId: project.managerId || '',
+      managerIds: [],
+      memberIds: []
     });
     setShowCreateForm(true);
   };
@@ -162,8 +170,22 @@ export default function ProjectsPage() {
 
   const managers = state.users.filter(user => user.role === 'ADMIN' || user.role === 'MANAGER');
 
-  // フィルタリング
+  // フィルタリング（メンバー権限の場合は自分が所属するプロジェクトのみ）
   const filteredProjects = state.projects.filter(project => {
+    // メンバー権限の場合、自分が所属するプロジェクトのみ表示
+    if (state.currentUser?.role === 'MEMBER') {
+      if (!state.currentUser) return false;
+      
+      const currentUserId = state.currentUser.id;
+      const isManager = project.managerId === currentUserId;
+      const isInManagers = project.managers?.some(m => m.userId === currentUserId);
+      const isInMembers = project.members?.some(m => m.userId === currentUserId);
+      
+      if (!isManager && !isInManagers && !isInMembers) {
+        return false;
+      }
+    }
+
     const projectName = project.name || '';
     const projectDescription = project.description || '';
     const searchTermLower = searchTerm.toLowerCase();
@@ -201,22 +223,25 @@ export default function ProjectsPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setShowCreateForm(true)}
-                  className="btn-primary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
-                >
-                  <span className="text-xl">✨</span>
-                  <span>新規プロジェクト</span>
-                </button>
-                <button
-                  onClick={() => setShowBulkModal(true)}
-                  className="btn-secondary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
-                >
-                  <span className="text-xl">📋</span>
-                  <span>一括登録</span>
-                </button>
-              </div>
+              {/* メンバー権限では新規プロジェクトと一括登録ボタンを非表示 */}
+              {state.currentUser?.role !== 'MEMBER' && (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => setShowCreateForm(true)}
+                    className="btn-primary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
+                  >
+                    <span className="text-xl">✨</span>
+                    <span>新規プロジェクト</span>
+                  </button>
+                  <button
+                    onClick={() => setShowBulkModal(true)}
+                    className="btn-secondary hover-lift flex items-center space-x-2 px-6 py-3 text-lg"
+                  >
+                    <span className="text-xl">📋</span>
+                    <span>一括登録</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -352,23 +377,36 @@ export default function ProjectsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="managerId" className="form-label flex items-center space-x-2">
-                        <span className="text-lg">👤</span>
-                        <span>プロジェクトマネージャー</span>
+                      <label className="form-label flex items-center space-x-2">
+                        <span className="text-lg">👥</span>
+                        <span>プロジェクトマネージャー（複数選択可）</span>
                       </label>
-                      <select
-                        id="managerId"
-                        value={formData.managerId}
-                        onChange={(e) => setFormData({...formData, managerId: e.target.value})}
-                        className="form-select"
-                      >
-                        <option value="">選択してください</option>
+                      <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
                         {managers.map(manager => (
-                          <option key={manager.id} value={manager.id}>
-                            {manager.name}
-                          </option>
+                          <label key={manager.id} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.managerIds.includes(manager.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    managerIds: [...formData.managerIds, manager.id],
+                                    managerId: formData.managerId || manager.id // 後方互換性のため
+                                  });
+                                } else {
+                                  setFormData({
+                                    ...formData,
+                                    managerIds: formData.managerIds.filter(id => id !== manager.id)
+                                  });
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm">{manager.name}</span>
+                          </label>
                         ))}
-                      </select>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -415,6 +453,38 @@ export default function ProjectsPage() {
                         <option value="ON_HOLD">⏸️ 保留</option>
                         <option value="COMPLETED">✅ 完了</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="form-label flex items-center space-x-2">
+                      <span className="text-lg">👥</span>
+                      <span>プロジェクトメンバー（複数選択可）</span>
+                    </label>
+                    <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                      {state.users.map(user => (
+                        <label key={user.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.memberIds.includes(user.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  memberIds: [...formData.memberIds, user.id]
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  memberIds: formData.memberIds.filter(id => id !== user.id)
+                                });
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">{user.name} ({user.role})</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 

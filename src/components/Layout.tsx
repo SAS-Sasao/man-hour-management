@@ -74,8 +74,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: 'プロジェクト', href: '/projects', icon: '📋' },
     { name: '工数入力', href: '/time-entry', icon: '⏰' },
     { name: 'レポート', href: '/reports', icon: '📈' },
+    
+    // 会社管理：MANAGERとADMINのみ（ただし機能は制限）
+    ...(state.currentUser?.role === 'ADMIN' || state.currentUser?.role === 'MANAGER' ? [
+      { name: '会社管理', href: '/companies', icon: '🏢' }
+    ] : []),
+    
+    // 組織管理：MANAGERとADMINのみ（ただし機能は制限）
+    ...(state.currentUser?.role === 'ADMIN' || state.currentUser?.role === 'MANAGER' ? [
+      { name: '組織管理', href: '/organizations', icon: '🏛️' }
+    ] : []),
+    
+    // ユーザー管理：ADMINのみ
     ...(state.currentUser?.role === 'ADMIN' ? [
-      { name: '組織管理', href: '/organizations', icon: '🏢' },
       { name: 'ユーザー管理', href: '/users', icon: '👥' }
     ] : []),
   ];
