@@ -11,7 +11,6 @@ export async function GET(
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
-        manager: true,
         phases: {
           include: {
             tasks: true
@@ -120,7 +119,6 @@ export async function PUT(
         managerId: managerId || null
       },
       include: {
-        manager: true,
         phases: {
           include: {
             tasks: true
