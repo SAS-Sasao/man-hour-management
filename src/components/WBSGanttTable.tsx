@@ -247,10 +247,17 @@ export default function WBSGanttTable({ projectId, assigneeId }: WBSGanttTablePr
   const isTaskActiveOnDate = (entry: WBSEntry, date: Date): boolean => {
     if (!entry.plannedStartDate || !entry.plannedEndDate) return false;
     
+    // 時間部分を0にリセットして日付のみで比較
     const startDate = new Date(entry.plannedStartDate);
-    const endDate = new Date(entry.plannedEndDate);
+    startDate.setHours(0, 0, 0, 0);
     
-    return date >= startDate && date <= endDate;
+    const endDate = new Date(entry.plannedEndDate);
+    endDate.setHours(0, 0, 0, 0);
+    
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    
+    return compareDate >= startDate && compareDate <= endDate;
   };
 
   // ステータスに応じた色を取得
