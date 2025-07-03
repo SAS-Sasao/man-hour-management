@@ -341,8 +341,8 @@ export default function ReportsPage() {
         phaseSubtotals.set(phaseKey, (phaseSubtotals.get(phaseKey) || 0) + item.hours);
       });
       
-      let currentProject = '';
-      let currentPhase = '';
+        const currentProject = '';
+        const currentPhase = '';
       let totalHours = 0;
       
       sortedData.forEach((item, index) => {
