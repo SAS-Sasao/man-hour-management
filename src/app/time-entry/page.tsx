@@ -21,6 +21,13 @@ export default function TimeEntryPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [showTeamView, setShowTeamView] = useState(false);
+  const [selectedProject, setSelectedProject] = useState('');
+
+  // プロジェクトマネージャーかどうかを判定
+  const managedProjects = state.projects.filter(project => 
+    project.managers?.some(m => m.userId === state.currentUser?.id)
+  );
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
@@ -210,17 +217,57 @@ export default function TimeEntryPage() {
             <div className="xl:col-span-3">
               <div className="card animate-scaleIn">
                 <div className="card-header">
-                  <h2 className="text-2xl font-bold gradient-text flex items-center space-x-3">
-                    <span className="text-3xl">📅</span>
-                    <span>カレンダー</span>
-                  </h2>
-                  <p className="text-gray-600 mt-1">日付をクリックして工数を入力してください</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-2xl font-bold gradient-text flex items-center space-x-3">
+                        <span className="text-3xl">📅</span>
+                        <span>カレンダー</span>
+                      </h2>
+                      <p className="text-gray-600 mt-1">日付をクリックして工数を入力してください</p>
+                    </div>
+                    
+                    {/* プロジェクトマネージャー向けチーム表示切り替え */}
+                    {managedProjects.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={showTeamView}
+                              onChange={(e) => setShowTeamView(e.target.checked)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">チーム表示</span>
+                          </label>
+                        </div>
+                        
+                        {showTeamView && (
+                          <div>
+                            <select
+                              value={selectedProject}
+                              onChange={(e) => setSelectedProject(e.target.value)}
+                              className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value="">プロジェクトを選択</option>
+                              {managedProjects.map(project => (
+                                <option key={project.id} value={project.id}>
+                                  {project.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="card-body">
                   <Calendar
                     selectedDate={selectedDate}
                     onDateSelect={handleDateSelect}
                     onTimeEntryClick={handleTimeEntryClick}
+                    showTeamView={showTeamView}
+                    projectId={selectedProject}
                   />
                 </div>
               </div>

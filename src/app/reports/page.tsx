@@ -4,7 +4,13 @@ import { useState, useMemo } from 'react';
 import Layout from '../../components/Layout';
 import { useApp } from '../../contexts/AppContext';
 import { MonthlyReport } from '../../types';
-import { hoursToPersonDays, formatPersonDays } from '../../utils/calculations';
+import { 
+  hoursToPersonDays, 
+  formatPersonDays, 
+  hoursToPersonMonths, 
+  formatPersonMonths
+} from '../../utils/calculations';
+import { getBusinessDaysInMonth } from '../../utils/holidays';
 
 type ViewMode = 'monthly' | 'hourly' | 'person';
 
@@ -164,56 +170,230 @@ export default function ReportsPage() {
 
   const exportToCsv = () => {
     const csvData = [];
+    const businessDays = getBusinessDaysInMonth(selectedYear, selectedMonth);
+    const personMonthBase = businessDays * 7.5; // 1人月 = 営業日数 × 7.5h
     
     if (viewMode === 'person') {
-      csvData.push(['ユーザー', 'プロジェクト', '時間', '人日']);
+      csvData.push(['ユーザー', 'プロジェクト', '時間', '人日', '人月']);
+      
+      let totalHours = 0;
       generateReport.forEach((userStat: any) => {
+        let userTotal = 0;
         Array.from(userStat.projects.values()).forEach((project: any) => {
           csvData.push([
             userStat.user?.name || '不明', 
             project.name, 
             project.hours.toString(),
-            hoursToPersonDays(project.hours).toFixed(2)
+            hoursToPersonDays(project.hours).toFixed(2),
+            hoursToPersonMonths(project.hours).toFixed(3)
           ]);
+          userTotal += project.hours;
         });
+        
+        // ユーザー小計を追加
+        csvData.push([
+          `【${userStat.user?.name || '不明'} 小計】`,
+          '',
+          userTotal.toString(),
+          hoursToPersonDays(userTotal).toFixed(2),
+          hoursToPersonMonths(userTotal).toFixed(3)
+        ]);
+        csvData.push(['', '', '', '', '']); // 空行
+        totalHours += userTotal;
       });
+      
+      // 全体合計を追加
+      if (generateReport.length > 0) {
+        csvData.push(['', '', '', '', '']); // 空行
+        csvData.push([
+          '【全体合計】',
+          '',
+          totalHours.toString(),
+          hoursToPersonDays(totalHours).toFixed(2),
+          hoursToPersonMonths(totalHours).toFixed(3)
+        ]);
+      }
     } else if (viewMode === 'hourly') {
-      csvData.push(['日付', 'プロジェクト', '工程', '作業', '時間', '人日']);
+      csvData.push(['日付', 'プロジェクト', '工程', '作業', 'ユーザー', '時間', '人日', '人月']);
+      
+      // プロジェクト→工程→作業→ユーザー順でソート
+      const sortedEntries: any[] = [];
       generateReport.forEach((dayStat: any) => {
         dayStat.entries.forEach((entry: any) => {
           const project = state.projects.find(p => p.id === entry.projectId);
           const phase = state.phases.find(p => p.id === entry.phaseId);
           const task = state.tasks.find(t => t.id === entry.taskId);
+          const user = state.users.find(u => u.id === entry.userId);
           
-          csvData.push([
-            entry.date.toLocaleDateString('ja-JP'),
-            project?.name || '不明',
-            phase?.name || '不明',
-            task?.name || '不明',
-            entry.hours.toString(),
-            hoursToPersonDays(entry.hours).toFixed(2)
-          ]);
+          sortedEntries.push({
+            date: entry.date,
+            projectName: project?.name || '不明',
+            phaseName: phase?.name || '不明',
+            taskName: task?.name || '不明',
+            userName: user?.name || '不明',
+            hours: entry.hours
+          });
         });
       });
+      
+      sortedEntries.sort((a, b) => {
+        if (a.projectName !== b.projectName) return a.projectName.localeCompare(b.projectName);
+        if (a.phaseName !== b.phaseName) return a.phaseName.localeCompare(b.phaseName);
+        if (a.taskName !== b.taskName) return a.taskName.localeCompare(b.taskName);
+        return a.userName.localeCompare(b.userName);
+      });
+      
+      // 工程単位での小計計算
+      const phaseSubtotals = new Map<string, number>();
+      sortedEntries.forEach((item) => {
+        const phaseKey = `${item.projectName}-${item.phaseName}`;
+        phaseSubtotals.set(phaseKey, (phaseSubtotals.get(phaseKey) || 0) + item.hours);
+      });
+      
+      let totalHours = 0;
+      
+      sortedEntries.forEach((entry, index) => {
+        csvData.push([
+          entry.date.toLocaleDateString('ja-JP'),
+          entry.projectName,
+          entry.phaseName,
+          entry.taskName,
+          entry.userName,
+          entry.hours.toString(),
+          hoursToPersonDays(entry.hours).toFixed(2),
+          hoursToPersonMonths(entry.hours).toFixed(3)
+        ]);
+        
+        totalHours += entry.hours;
+        
+        // 工程が変わる場合、または最後の行の場合に小計を追加
+        const nextEntry = sortedEntries[index + 1];
+        const phaseKey = `${entry.projectName}-${entry.phaseName}`;
+        
+        if (!nextEntry || 
+            nextEntry.projectName !== entry.projectName || 
+            nextEntry.phaseName !== entry.phaseName) {
+          
+          const phaseTotal = phaseSubtotals.get(phaseKey) || 0;
+          csvData.push([
+            '',
+            '',
+            `【${entry.phaseName} 小計】`,
+            '',
+            '',
+            phaseTotal.toString(),
+            hoursToPersonDays(phaseTotal).toFixed(2),
+            hoursToPersonMonths(phaseTotal).toFixed(3)
+          ]);
+          csvData.push(['', '', '', '', '', '', '', '']); // 空行
+        }
+      });
+      
+      // 全体合計を追加
+      if (sortedEntries.length > 0) {
+        csvData.push(['', '', '', '', '', '', '', '']); // 空行
+        csvData.push([
+          '',
+          '【全体合計】',
+          '',
+          '',
+          '',
+          totalHours.toString(),
+          hoursToPersonDays(totalHours).toFixed(2),
+          hoursToPersonMonths(totalHours).toFixed(3)
+        ]);
+      }
     } else {
-      csvData.push(['ユーザー', 'プロジェクト', '工程', '作業', '時間', '人日']);
+      // 月次レポート - プロジェクト→工程→作業→ユーザー順
+      csvData.push(['プロジェクト', '工程', '作業', 'ユーザー', '時間', '人日', '人月']);
+      
+      // データを整理してソート
+      const sortedData: any[] = [];
       generateReport.forEach((report: any) => {
         const user = state.users.find(u => u.id === report.userId);
         const project = state.projects.find(p => p.id === report.projectId);
 
         report.phaseBreakdown.forEach((phase: any) => {
           phase.taskBreakdown.forEach((task: any) => {
-            csvData.push([
-              user?.name || '不明',
-              project?.name || '不明',
-              phase.phaseName,
-              task.taskName,
-              task.hours.toString(),
-              hoursToPersonDays(task.hours).toFixed(2)
-            ]);
+            sortedData.push({
+              projectName: project?.name || '不明',
+              phaseName: phase.phaseName,
+              taskName: task.taskName,
+              userName: user?.name || '不明',
+              hours: task.hours
+            });
           });
         });
       });
+      
+      // プロジェクト→工程→作業→ユーザー順でソート
+      sortedData.sort((a, b) => {
+        if (a.projectName !== b.projectName) return a.projectName.localeCompare(b.projectName);
+        if (a.phaseName !== b.phaseName) return a.phaseName.localeCompare(b.phaseName);
+        if (a.taskName !== b.taskName) return a.taskName.localeCompare(b.taskName);
+        return a.userName.localeCompare(b.userName);
+      });
+      
+      // 工程単位での小計計算
+      const phaseSubtotals = new Map<string, number>();
+      sortedData.forEach((item) => {
+        const phaseKey = `${item.projectName}-${item.phaseName}`;
+        phaseSubtotals.set(phaseKey, (phaseSubtotals.get(phaseKey) || 0) + item.hours);
+      });
+      
+      let currentProject = '';
+      let currentPhase = '';
+      let totalHours = 0;
+      
+      sortedData.forEach((item, index) => {
+        // データ行を追加
+        csvData.push([
+          item.projectName,
+          item.phaseName,
+          item.taskName,
+          item.userName,
+          item.hours.toString(),
+          hoursToPersonDays(item.hours).toFixed(2),
+          hoursToPersonMonths(item.hours).toFixed(3)
+        ]);
+        
+        totalHours += item.hours;
+        
+        // 工程が変わる場合、または最後の行の場合に小計を追加
+        const nextItem = sortedData[index + 1];
+        const phaseKey = `${item.projectName}-${item.phaseName}`;
+        
+        if (!nextItem || 
+            nextItem.projectName !== item.projectName || 
+            nextItem.phaseName !== item.phaseName) {
+          
+          const phaseTotal = phaseSubtotals.get(phaseKey) || 0;
+          csvData.push([
+            '',
+            `【${item.phaseName} 小計】`,
+            '',
+            '',
+            phaseTotal.toString(),
+            hoursToPersonDays(phaseTotal).toFixed(2),
+            hoursToPersonMonths(phaseTotal).toFixed(3)
+          ]);
+          csvData.push(['', '', '', '', '', '', '']); // 空行
+        }
+      });
+      
+      // 全体合計を追加
+      if (sortedData.length > 0) {
+        csvData.push(['', '', '', '', '', '', '']); // 空行
+        csvData.push([
+          '【全体合計】',
+          '',
+          '',
+          '',
+          totalHours.toString(),
+          hoursToPersonDays(totalHours).toFixed(2),
+          hoursToPersonMonths(totalHours).toFixed(3)
+        ]);
+      }
     }
 
     const csvContent = csvData.map(row => row.join(',')).join('\n');

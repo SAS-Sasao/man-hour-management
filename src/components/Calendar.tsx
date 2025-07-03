@@ -10,9 +10,11 @@ interface CalendarProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
   onTimeEntryClick: (entry: TimeEntry) => void;
+  showTeamView?: boolean;
+  projectId?: string;
 }
 
-export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick }: CalendarProps) {
+export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick, showTeamView = false, projectId }: CalendarProps) {
   const { state } = useApp();
   const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth()));
 
@@ -48,15 +50,67 @@ export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick 
     return days;
   }, [currentMonth]);
 
+  // プロジェクトマネージャーかどうかを判定
+  const isProjectManager = useMemo(() => {
+    if (!state.currentUser || !projectId) return false;
+    const project = state.projects.find(p => p.id === projectId);
+    return project?.managers?.some(m => m.userId === state.currentUser?.id) || false;
+  }, [state.currentUser, state.projects, projectId]);
+
+  // プロジェクトメンバーを取得
+  const projectMembers = useMemo(() => {
+    if (!projectId) return [];
+    const project = state.projects.find(p => p.id === projectId);
+    return project?.members?.map(m => m.userId) || [];
+  }, [state.projects, projectId]);
+
   const getTimeEntriesForDate = (date: Date) => {
-    return state.timeEntries.filter(entry => 
-      entry.userId === state.currentUser?.id &&
-      entry.date.toDateString() === date.toDateString()
-    );
+    if (showTeamView && projectId) {
+      // チーム表示モード：選択されたプロジェクトのメンバー全員の工数を取得
+      return state.timeEntries.filter(entry => 
+        entry.projectId === projectId &&
+        entry.date.toDateString() === date.toDateString()
+      );
+    } else {
+      // 個人表示モード：自分の工数のみ
+      return state.timeEntries.filter(entry => 
+        entry.userId === state.currentUser?.id &&
+        entry.date.toDateString() === date.toDateString()
+      );
+    }
   };
 
   const getTotalHoursForDate = (date: Date) => {
     return getTimeEntriesForDate(date).reduce((sum, entry) => sum + entry.hours, 0);
+  };
+
+  // ユーザー別の色を生成
+  const getUserColor = (userId: string) => {
+    const colors = [
+      'bg-blue-100 text-blue-800',
+      'bg-green-100 text-green-800',
+      'bg-purple-100 text-purple-800',
+      'bg-pink-100 text-pink-800',
+      'bg-indigo-100 text-indigo-800',
+      'bg-yellow-100 text-yellow-800',
+      'bg-red-100 text-red-800',
+      'bg-gray-100 text-gray-800'
+    ];
+    
+    // プロジェクトメンバーリストからインデックスを取得、見つからない場合は文字列ハッシュを使用
+    let index = projectMembers.indexOf(userId);
+    if (index === -1) {
+      // ユーザーIDの文字列ハッシュを使って色を決定
+      let hash = 0;
+      for (let i = 0; i < userId.length; i++) {
+        const char = userId.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // 32bit整数に変換
+      }
+      index = Math.abs(hash) % colors.length;
+    }
+    
+    return colors[index];
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -181,6 +235,7 @@ export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick 
                 {timeEntries.slice(0, 3).map((entry) => {
                   const project = state.projects.find(p => p.id === entry.projectId);
                   const task = state.tasks.find(t => t.id === entry.taskId);
+                  const user = state.users.find(u => u.id === entry.userId);
                   
                   return (
                     <div
@@ -189,16 +244,44 @@ export default function Calendar({ selectedDate, onDateSelect, onTimeEntryClick 
                         e.stopPropagation();
                         onTimeEntryClick(entry);
                       }}
-                      className="text-xs p-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors duration-150 cursor-pointer"
+                      className={`text-xs p-1 rounded hover:opacity-80 transition-all duration-150 cursor-pointer ${
+                        showTeamView && projectId
+                          ? getUserColor(entry.userId)
+                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                      }`}
                     >
-                      <div className="font-medium truncate">{project?.name || '不明'}</div>
-                      <div className="text-blue-600 truncate">{task?.name || '不明'} - {entry.hours}h</div>
+                      <div className="font-medium truncate">
+                        {showTeamView && isProjectManager ? (
+                          <>
+                            <span className="inline-block w-2 h-2 rounded-full bg-current mr-1"></span>
+                            {user?.name || '不明'} - {project?.name || '不明'}
+                          </>
+                        ) : (
+                          project?.name || '不明'
+                        )}
+                      </div>
+                      <div className="truncate opacity-75">
+                        {task?.name || '不明'} - {entry.hours}h
+                        {showTeamView && isProjectManager && (
+                          <span className="ml-1 text-xs opacity-60">
+                            ({new Date(entry.createdAt || entry.date).toLocaleTimeString('ja-JP', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}入力)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
                 {timeEntries.length > 3 && (
                   <div className="text-xs text-gray-500 text-center">
                     +{timeEntries.length - 3}件
+                    {showTeamView && isProjectManager && (
+                      <div className="text-xs mt-1">
+                        {Array.from(new Set(timeEntries.map(e => e.userId))).length}人が入力
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
